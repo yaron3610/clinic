@@ -1,0 +1,24 @@
+# Allow-list: everything in this folder is private by default.
+# The site backup, database, patient documents, local WordPress copy,
+# server binaries and any key files must never be published.
+/*
+
+!/.gitignore
+!/README.md
+!/IMPORT-BACK-GUIDE.md
+!/shoval-intake/
+
+# Local preview scripts only (not the PHP/MariaDB binaries or database).
+!/local-server/
+/local-server/*
+!/local-server/router.php
+!/local-server/start-local.cmd
+
+# Never, even inside allowed folders.
+.env
+.env.*
+*.wpress
+*.sql
+*.docx
+*.zip
+*.log

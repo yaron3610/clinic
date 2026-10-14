@@ -1,0 +1,671 @@
+/* Shoval Intake – questionnaire page. Same design as REPORT_AI/index.html, scoped to this plugin. */
+
+body.shoval-intake-page {
+	--si-primary: #142850;
+	--si-primary-hover: #1e3d73;
+	--si-accent: #00909e;
+	--si-accent-light: #e6f6f7;
+	--si-text-dark: #2d3748;
+	--si-text-muted: #718096;
+	--si-bg-light: #f7fafc;
+	--si-bg-card: #ffffff;
+	--si-border: #e2e8f0;
+	--si-danger: #e53e3e;
+	--si-success: #2f855a;
+	--si-success-light: #f0fff4;
+
+	margin: 0;
+	font-family: 'Assistant', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	background-color: var(--si-bg-light);
+	color: var(--si-text-dark);
+	line-height: 1.6;
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.shoval-intake-page *,
+.shoval-intake-page *::before,
+.shoval-intake-page *::after {
+	box-sizing: border-box;
+}
+
+/* Header */
+.shoval-intake-page .si-header {
+	background-color: #ffffff;
+	border-bottom: 1px solid var(--si-border);
+	padding: 16px 24px;
+	position: sticky;
+	top: 0;
+	z-index: 50;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.shoval-intake-page.admin-bar .si-header {
+	top: 32px;
+}
+
+.shoval-intake-page .si-header-content {
+	max-width: 1000px;
+	margin: 0 auto;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+}
+
+.shoval-intake-page .si-brand {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	text-decoration: none;
+	color: inherit;
+}
+
+.shoval-intake-page .si-brand img {
+	height: 48px;
+	width: auto;
+	object-fit: contain;
+}
+
+.shoval-intake-page .si-brand-titles {
+	display: flex;
+	flex-direction: column;
+}
+
+.shoval-intake-page .si-brand-name {
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--si-primary);
+	line-height: 1.2;
+}
+
+.shoval-intake-page .si-brand-sub {
+	font-size: 13px;
+	color: var(--si-text-muted);
+}
+
+.shoval-intake-page .si-back-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	border-radius: 6px;
+	background: transparent;
+	border: 1px solid var(--si-border);
+	color: var(--si-primary);
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 600;
+	white-space: nowrap;
+	transition: all 0.2s ease;
+}
+
+.shoval-intake-page .si-back-btn:hover,
+.shoval-intake-page .si-back-btn:focus {
+	background-color: #edf2f7;
+	border-color: #cbd5e0;
+	color: var(--si-primary);
+}
+
+/* Layout */
+.shoval-intake-page .si-container {
+	max-width: 1000px;
+	width: 100%;
+	margin: 32px auto 60px auto;
+	padding: 0 16px;
+	flex: 1;
+}
+
+.shoval-intake-page .si-hero {
+	background: linear-gradient(135deg, #142850 0%, #27496d 100%);
+	color: #ffffff;
+	padding: 32px 28px;
+	border-radius: 12px;
+	margin-bottom: 28px;
+	box-shadow: 0 4px 12px rgba(20, 40, 80, 0.12);
+}
+
+.shoval-intake-page .si-hero h1 {
+	font-size: 28px;
+	font-weight: 800;
+	margin: 0 0 8px 0;
+	color: #ffffff;
+	line-height: 1.3;
+}
+
+.shoval-intake-page .si-hero p {
+	font-size: 16px;
+	opacity: 0.9;
+	max-width: 780px;
+	line-height: 1.5;
+	margin: 0;
+}
+
+.shoval-intake-page .si-badge {
+	display: inline-block;
+	background-color: rgba(255, 255, 255, 0.18);
+	color: #ffffff;
+	padding: 4px 12px;
+	border-radius: 20px;
+	font-size: 13px;
+	font-weight: 600;
+	margin-bottom: 12px;
+}
+
+.shoval-intake-page .si-footer {
+	background-color: #ffffff;
+	border-top: 1px solid var(--si-border);
+	padding: 24px;
+	text-align: center;
+	font-size: 14px;
+	color: var(--si-text-muted);
+	margin-top: auto;
+}
+
+.shoval-intake-page .si-footer p {
+	margin: 0;
+}
+
+/* Form */
+.si-app {
+	font-family: 'Assistant', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	color: #2d3748;
+	line-height: 1.6;
+}
+
+.si-app .si-card {
+	background-color: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+	padding: 28px 24px;
+	margin-bottom: 24px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.si-app .si-card-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding-bottom: 14px;
+	margin-bottom: 20px;
+	border-bottom: 1px solid #edf2f7;
+}
+
+.si-app .si-card-icon {
+	width: 34px;
+	height: 34px;
+	border-radius: 8px;
+	background-color: #e6f6f7;
+	color: #00909e;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
+	font-size: 16px;
+	flex-shrink: 0;
+}
+
+.si-app .si-card-header h2 {
+	font-size: 20px;
+	font-weight: 700;
+	color: #142850;
+	margin: 0;
+	line-height: 1.4;
+}
+
+.si-app .si-card-desc {
+	font-size: 14px;
+	color: #718096;
+	margin: -12px 0 18px 0;
+}
+
+.si-app .si-grid-3 {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 16px;
+}
+
+.si-app .si-group {
+	margin-bottom: 16px;
+	display: flex;
+	flex-direction: column;
+}
+
+.si-app .si-full {
+	grid-column: 1 / -1;
+}
+
+.si-app label {
+	font-size: 14px;
+	font-weight: 600;
+	color: #334155;
+	margin-bottom: 6px;
+}
+
+.si-app .si-req {
+	color: #e53e3e;
+	margin-left: 2px;
+}
+
+.si-app input[type="text"],
+.si-app input[type="tel"],
+.si-app input[type="email"],
+.si-app input[type="number"],
+.si-app select,
+.si-app textarea {
+	width: 100%;
+	padding: 10px 14px;
+	font-size: 15px;
+	font-family: inherit;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	background-color: #ffffff;
+	color: #2d3748;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+	outline: none;
+	margin: 0;
+	height: auto;
+	line-height: 1.5;
+}
+
+.si-app input[dir="ltr"] {
+	text-align: right;
+}
+
+.si-app input:focus,
+.si-app select:focus,
+.si-app textarea:focus {
+	border-color: #00909e;
+	box-shadow: 0 0 0 3px rgba(0, 144, 158, 0.12);
+}
+
+.si-app .si-invalid,
+.si-app .si-invalid:focus {
+	border-color: #e53e3e;
+	box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.12);
+}
+
+.si-app textarea {
+	resize: vertical;
+	min-height: 110px;
+}
+
+.si-app input[type="file"] {
+	font-family: inherit;
+	font-size: 14px;
+	padding: 6px 0;
+}
+
+.si-app .si-hint {
+	color: #718096;
+	margin-top: 4px;
+	font-size: 13px;
+}
+
+.si-app .si-checkbox {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+	font-size: 15px;
+	font-weight: 600;
+	color: #334155;
+	user-select: none;
+	margin-bottom: 16px;
+	padding: 8px 12px;
+	background-color: #f8fafc;
+	border-radius: 6px;
+	border: 1px solid #e2e8f0;
+	width: fit-content;
+}
+
+.si-app input[type="checkbox"] {
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	accent-color: #142850;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+/* Medication rows */
+.si-app .si-med-row {
+	display: flex;
+	gap: 12px;
+	margin-bottom: 10px;
+	align-items: center;
+}
+
+.si-app .si-med-row .si-med-name {
+	flex: 2;
+}
+
+.si-app .si-med-row .si-med-dosage {
+	flex: 1.5;
+}
+
+.si-app .si-btn-remove-row,
+.si-app .si-btn-remove-row:hover,
+.si-app .si-btn-remove-row:focus {
+	background: none;
+	border: none;
+	box-shadow: none;
+	color: #a0aec0;
+	cursor: pointer;
+	font-size: 18px;
+	line-height: 1;
+	padding: 6px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: color 0.15s;
+}
+
+.si-app .si-btn-remove-row:hover,
+.si-app .si-btn-remove-row:focus-visible {
+	color: #e53e3e;
+	outline: none;
+}
+
+.si-app .si-btn-add,
+.si-app .si-btn-add:focus {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	background-color: #f0fdf4;
+	border: 1px solid #bbf7d0;
+	color: #166534;
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	border-radius: 6px;
+	cursor: pointer;
+	margin-top: 8px;
+	transition: all 0.15s;
+}
+
+.si-app .si-btn-add:hover {
+	background-color: #dcfce7;
+	border-color: #bbf7d0;
+	color: #166534;
+}
+
+.si-app .si-btn-add:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.si-app .si-disabled-area {
+	opacity: 0.4;
+	pointer-events: none;
+}
+
+/* Past medications table */
+.si-app .si-table-container {
+	overflow-x: auto;
+	margin-bottom: 12px;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+}
+
+.si-app table.si-past-meds {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	min-width: 600px;
+	margin: 0;
+	border: 0;
+}
+
+.si-app table.si-past-meds th {
+	background-color: #f8fafc;
+	padding: 10px 12px;
+	font-weight: 700;
+	color: #475569;
+	text-align: right;
+	border: 0;
+	border-bottom: 1px solid #e2e8f0;
+}
+
+.si-app table.si-past-meds td {
+	padding: 8px 10px;
+	border: 0;
+	border-bottom: 1px solid #edf2f7;
+	background: #ffffff;
+}
+
+.si-app table.si-past-meds input {
+	padding: 8px 10px;
+	font-size: 14px;
+}
+
+/* Consent */
+.si-app .si-consent-card {
+	padding: 20px 24px;
+}
+
+.si-app .si-consent {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	cursor: pointer;
+	font-size: 14.5px;
+	font-weight: 600;
+	color: #334155;
+	margin: 0;
+	line-height: 1.6;
+}
+
+.si-app .si-consent input[type="checkbox"] {
+	margin-top: 4px;
+}
+
+/* Honeypot */
+/* Visually hidden without offsetting it (an offset would add a horizontal scroll on RTL pages). */
+.si-app .si-hp {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	margin: -1px !important;
+	padding: 0 !important;
+	border: 0 !important;
+	overflow: hidden !important;
+	clip: rect(0 0 0 0) !important;
+	clip-path: inset(50%) !important;
+	white-space: nowrap !important;
+}
+
+/* Submit */
+.si-app .si-submit-area {
+	text-align: center;
+	margin: 36px 0 20px 0;
+}
+
+.si-app .si-btn-submit,
+.si-app .si-btn-submit:focus {
+	background-color: #142850;
+	color: #ffffff;
+	font-size: 18px;
+	font-weight: 700;
+	font-family: inherit;
+	padding: 14px 48px;
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+	box-shadow: 0 4px 12px rgba(20, 40, 80, 0.2);
+	transition: all 0.2s ease;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	min-width: 240px;
+}
+
+.si-app .si-btn-submit:hover:not(:disabled) {
+	background-color: #1e3d73;
+	color: #ffffff;
+	transform: translateY(-1px);
+	box-shadow: 0 6px 16px rgba(20, 40, 80, 0.28);
+}
+
+.si-app .si-btn-submit:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
+}
+
+/* Status cards */
+.si-app .si-status {
+	padding: 24px;
+	border-radius: 12px;
+	text-align: center;
+	margin: 24px 0;
+	animation: si-fade-in 0.3s ease-in-out;
+}
+
+.si-app .si-status[hidden] {
+	display: none;
+}
+
+.si-app .si-status-processing {
+	background-color: #ebf8ff;
+	border: 1px solid #bee3f8;
+	color: #2b6cb0;
+}
+
+.si-app .si-status-success {
+	background-color: #f0fff4;
+	border: 1px solid #9ae6b4;
+	color: #2f855a;
+}
+
+.si-app .si-status-error {
+	background-color: #fff5f5;
+	border: 1px solid #feb2b2;
+	color: #e53e3e;
+}
+
+.si-app .si-status-icon {
+	font-size: 38px;
+	margin-bottom: 8px;
+	line-height: 1.2;
+}
+
+.si-app .si-status-title {
+	font-size: 20px;
+	font-weight: 700;
+	margin-bottom: 6px;
+}
+
+.si-app .si-status-desc {
+	font-size: 15px;
+	opacity: 0.9;
+}
+
+.si-app .si-status-actions {
+	margin-top: 18px;
+	display: flex;
+	gap: 12px;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+.si-app .si-status-actions .si-back-btn {
+	display: inline-flex;
+	align-items: center;
+	padding: 8px 16px;
+	border-radius: 6px;
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	color: #142850;
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.si-app .si-spinner {
+	width: 36px;
+	height: 36px;
+	border: 3px solid rgba(43, 108, 176, 0.2);
+	border-top-color: #2b6cb0;
+	border-radius: 50%;
+	animation: si-spin 0.8s linear infinite;
+	margin: 0 auto 12px auto;
+}
+
+@keyframes si-spin {
+	to { transform: rotate(360deg); }
+}
+
+@keyframes si-fade-in {
+	from { opacity: 0; transform: translateY(6px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+.si-app .screen-reader-text {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+	.shoval-intake-page.admin-bar .si-header {
+		top: 46px;
+	}
+}
+
+@media (max-width: 768px) {
+	.si-app .si-grid-3 {
+		grid-template-columns: 1fr;
+	}
+
+	.shoval-intake-page .si-hero {
+		padding: 24px 18px;
+	}
+
+	.shoval-intake-page .si-hero h1 {
+		font-size: 22px;
+	}
+
+	.si-app .si-card {
+		padding: 20px 16px;
+	}
+
+	.si-app .si-btn-submit {
+		width: 100%;
+	}
+
+	.shoval-intake-page .si-header {
+		padding: 12px 16px;
+	}
+
+	.shoval-intake-page .si-brand-sub {
+		display: none;
+	}
+}
+
+@media (max-width: 480px) {
+	/* The logo already carries the clinic name; the full title is right below in the hero. */
+	.shoval-intake-page .si-brand-titles {
+		display: none;
+	}
+
+	.shoval-intake-page .si-back-btn > span:first-child {
+		font-size: 13px;
+	}
+
+	.si-app .si-med-row {
+		flex-wrap: wrap;
+	}
+
+	.si-app .si-med-row .si-med-name,
+	.si-app .si-med-row .si-med-dosage {
+		flex: 1 1 100%;
+	}
+}

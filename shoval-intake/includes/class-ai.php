@@ -63,7 +63,7 @@ class Shoval_Intake_AI {
 				'gender'   => self::field( $data, 'gender' ),
 			),
 			'date'                           => self::israel_date(),
-			'letterAddressedTo'              => "לכב'\nהרופא המטפל\nוכל גורם טיפולי / יעוצי / חינוכי רלבנטי, כולל ועדת אפיון וזכאות",
+			'letterAddressedTo'              => "לכב׳\nהרופא המטפל\nוכל גורם טיפולי / יעוצי / חינוכי רלבנטי, כולל ועדת אפיון וזכאות",
 			'subject'                        => 'הנדון: ' . $full_name . ' ת.ז. ' . $id_number . ' – סיכום הערכה קלינית ותוכנית טיפולית',
 			'diagnoses'                      => $diagnoses,
 			'otherMedicalConditions'         => '0',
@@ -117,7 +117,7 @@ class Shoval_Intake_AI {
 		foreach ( self::current_meds( $data ) as $m ) {
 			$list[] = trim( $m['name'] . ' ' . ( isset( $m['dosage'] ) ? $m['dosage'] : '' ) );
 		}
-		return $list ? implode( ', ', $list ) : '0';
+		return $list ? implode( "\n", $list ) : '0';   // one medication per line in the letter
 	}
 
 	private static function opening( array $data, $full_name, $f ) {
@@ -149,10 +149,18 @@ class Shoval_Intake_AI {
 			$text .= $f ? ' היא בת יחידה להוריה.' : ' הוא בן יחיד להוריו.';
 		}
 
-		$text .= ' האם/ההורים נכחו בפגישה ומסרו מידע התפתחותי, רפואי ואנמנסטי מפורט כנדרש.';
+		// Parents attend for minors; an adult gives the history personally.
+		$adult = is_numeric( $age ) && (float) $age >= 18;
+		if ( $adult ) {
+			$text .= $f ? ' היא מסרה מידע רפואי ואנמנסטי מפורט כנדרש.' : ' הוא מסר מידע רפואי ואנמנסטי מפורט כנדרש.';
+		} else {
+			$text .= ' האם/ההורים נכחו בפגישה ומסרו מידע התפתחותי, רפואי ואנמנסטי מפורט כנדרש.';
+		}
 
+		// The referral reason is free text, so it gets its own sentence instead of being glued after "בשל".
 		$reason = rtrim( self::one_line( self::field( $data, 'referralReason' ) ), " .\t" );
-		$text  .= "\n\n" . ( $f ? 'הוערכה' : 'הוערך' ) . ' במרפאתי לראשונה היום לצורך איבחון אינטגרטיבי בשל ' . ( $reason !== '' ? $reason : 'הערכה קלינית' ) . '.';
+		$text  .= "\n\n" . ( $f ? 'הוערכה' : 'הוערך' ) . ' במרפאתי לראשונה היום לצורך איבחון אינטגרטיבי.'
+			. ( $reason !== '' ? ' סיבת הפנייה: ' . $reason . '.' : '' );
 
 		return $text;
 	}
@@ -186,9 +194,7 @@ class Shoval_Intake_AI {
 			$parts[] = 'מסמכים ואבחונים קודמים שהוצגו: ' . $docs . '.';
 		}
 
-		if ( ! empty( $data['uploadedFileNames'] ) && is_array( $data['uploadedFileNames'] ) ) {
-			$parts[] = 'קבצים שצורפו לשאלון: ' . implode( ', ', array_map( 'strval', $data['uploadedFileNames'] ) ) . '.';
-		}
+		// Uploaded file names are not part of the clinical letter; they are listed in the clinic e-mail.
 
 		return 'ברקע רפואי, מיילדותי והתפתחותי: ______________________________________. ' . implode( ' ', $parts );
 	}

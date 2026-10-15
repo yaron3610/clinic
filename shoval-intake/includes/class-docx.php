@@ -17,7 +17,11 @@ class Shoval_Intake_Docx {
 	const NAVY  = '002060';
 	const DARK  = '1E293B';
 	const GREY  = '94A3B8';
-	const BLANK = '_________________________________________________________________________________';
+
+	// A4 (11906 twips) minus 1200 left and right margins: tables span exactly the text width,
+	// so the Hebrew letterhead lines up with the right edge of the body text.
+	const TEXT_W = 9506;
+	const HALF_W = 4753;
 
 	const NS_W   = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 	const NS_R   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
@@ -38,7 +42,7 @@ class Shoval_Intake_Docx {
 			. '<w:sectPr><w:footerReference w:type="default" r:id="rId3"/>'
 			. '<w:pgSz w:w="11906" w:h="16838" w:orient="portrait"/>'
 			. '<w:pgMar w:top="1080" w:right="1200" w:bottom="1080" w:left="1200" w:header="708" w:footer="708" w:gutter="0"/>'
-			. '<w:pgNumType/><w:docGrid w:linePitch="360"/></w:sectPr>'
+			. '<w:pgNumType/><w:bidi w:val="0"/><w:docGrid w:linePitch="360"/></w:sectPr>'
 			. '</w:body></w:document>';
 
 		$footer = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -115,7 +119,7 @@ class Shoval_Intake_Docx {
 		};
 		$head_borders = array( 'top' => $none, 'left' => $none, 'bottom' => $navy14, 'right' => $none );
 		$x .= self::table(
-			array( 4513, 4513 ),
+			array( self::HALF_W, self::HALF_W ),
 			array( 'top' => $none, 'left' => $none, 'bottom' => $navy14, 'right' => $none, 'insideH' => $none, 'insideV' => $none ),
 			array(
 				array(
@@ -125,17 +129,17 @@ class Shoval_Intake_Docx {
 						. $en( 'Child & Adolescent Psychiatrist', 20, array( 'bold' => true ) )
 						. $en( 'Geha Mental Health Center and Tel Aviv University', 18, array( 'italic' => true ) )
 						. $en( 'Clinic: 81 Sokolov St., Ramat Hasharon', 18, array( 'underline' => true, 'after' => 40 ) ),
-						4513,
-						array( 'borders' => $head_borders, 'margins' => array( 'left' => 20, 'bottom' => 120 ) )
+						self::HALF_W,
+						array( 'borders' => $head_borders, 'margins' => array( 'left' => 0, 'right' => 60, 'bottom' => 120 ) )
 					),
 					self::tc(
-						$he( "פרופ' גל שובל", 22, array( 'bold' => true ) )
+						$he( 'פרופ׳ גל שובל', 22, array( 'bold' => true ) )
 						. $he( 'מומחה בפסיכיאטריה כללית', 20, array( 'bold' => true ) )
 						. $he( 'מומחה בפסיכיאטריה של הילד והמתבגר', 20, array( 'bold' => true ) )
 						. $he( 'המרכז לבריאות הנפש "גהה" ואוניברסיטת תל-אביב', 18 )
-						. $he( "מרפאה פרטית: רח' סוקולוב 81, רמת השרון", 18, array( 'underline' => true, 'after' => 40 ) ),
-						4513,
-						array( 'borders' => $head_borders, 'margins' => array( 'bottom' => 120, 'right' => 20 ) )
+						. $he( 'מרפאה פרטית: רח׳ סוקולוב 81, רמת השרון', 18, array( 'underline' => true, 'after' => 40 ) ),
+						self::HALF_W,
+						array( 'borders' => $head_borders, 'margins' => array( 'left' => 60, 'right' => 0, 'bottom' => 120 ) )
 					),
 				),
 			)
@@ -147,7 +151,7 @@ class Shoval_Intake_Docx {
 		// 3. Date (left) | addressed to (right).
 		$recipients = ! empty( $s['letterAddressedTo'] )
 			? explode( "\n", $s['letterAddressedTo'] )
-			: array( "לכב'", 'הרופא המטפל', 'וכל גורם טיפולי / יעוצי / חינוכי רלבנטי, כולל ועדת אפיון וזכאות' );
+			: array( 'לכב׳', 'הרופא המטפל', 'וכל גורם טיפולי / יעוצי / חינוכי רלבנטי, כולל ועדת אפיון וזכאות' );
 		$date       = ! empty( $s['date'] ) ? trim( $s['date'] ) : Shoval_Intake_AI::israel_date();
 		$no_borders = array( 'top' => $none, 'left' => $none, 'bottom' => $none, 'right' => $none );
 		$recipient_paras = '';
@@ -155,12 +159,12 @@ class Shoval_Intake_Docx {
 			$recipient_paras .= self::p( array( self::r( $line, array( 'size' => 22, 'color' => self::DARK, 'rtl' => true ) ) ), array( 'bidi' => true, 'align' => 'right', 'before' => 15, 'after' => 15 ) );
 		}
 		$x .= self::table(
-			array( 2600, 6426 ),
+			array( 2738, self::TEXT_W - 2738 ),
 			array( 'top' => $none, 'left' => $none, 'bottom' => $none, 'right' => $none, 'insideH' => $none, 'insideV' => $none ),
 			array(
 				array(
-					self::tc( self::p( array( self::r( $date, array( 'size' => 22, 'color' => self::DARK ) ) ), array( 'align' => 'left', 'before' => 20, 'after' => 20 ) ), 2600, array( 'borders' => $no_borders ) ),
-					self::tc( $recipient_paras, 6426, array( 'borders' => $no_borders ) ),
+					self::tc( self::p( array( self::r( $date, array( 'size' => 22, 'color' => self::DARK ) ) ), array( 'align' => 'left', 'before' => 20, 'after' => 20 ) ), 2738, array( 'borders' => $no_borders, 'margins' => array( 'left' => 0, 'right' => 60 ) ) ),
+					self::tc( $recipient_paras, self::TEXT_W - 2738, array( 'borders' => $no_borders, 'margins' => array( 'left' => 60, 'right' => 0 ) ) ),
 				),
 			)
 		);
@@ -180,16 +184,20 @@ class Shoval_Intake_Docx {
 		$x .= self::ltr_heading( 'Dx.', 140, 50 );
 		if ( ! empty( $s['diagnoses'] ) ) {
 			$rows = array();
-			foreach ( $s['diagnoses'] as $d ) {
-				$name   = preg_replace( '/^\.?\d+[.)]\s*/', '', (string) $d['name'] );
-				$icd    = trim( preg_replace( '/^ICD-10:\s*/i', '', isset( $d['icd10'] ) ? (string) $d['icd10'] : '' ) );
-				$margin = array( 'top' => 25, 'left' => 10, 'bottom' => 25, 'right' => 10 );
+			foreach ( array_values( $s['diagnoses'] ) as $n => $d ) {
+				$name = trim( preg_replace( '/^\.?\d+[.)]?\s+/', '', (string) $d['name'] ) );
+				$icd  = trim( preg_replace( '/^ICD-10:\s*/i', '', isset( $d['icd10'] ) ? (string) $d['icd10'] : '' ) );
+				if ( strpos( $name, '___' ) !== false || $name === '' ) {
+					// Blank line for the physician: "1. ______" (left-to-right, like the rest of the Dx. area).
+					$name = ( $n + 1 ) . '. ' . str_repeat( '_', 48 );
+					$icd  = str_repeat( '_', 10 );
+				}
 				$rows[] = array(
-					self::tc( self::p( array( self::r( $name, array( 'size' => 22, 'color' => self::DARK ) ) ), array( 'align' => 'left', 'before' => 15, 'after' => 15 ) ), 6500, array( 'borders' => $no_borders, 'margins' => $margin ) ),
-					self::tc( self::p( array( self::r( $icd, array( 'size' => 22, 'color' => self::DARK ) ) ), array( 'align' => 'right', 'before' => 15, 'after' => 15 ) ), 2526, array( 'borders' => $no_borders, 'margins' => $margin ) ),
+					self::tc( self::left_value( $name, 15, 15 ), 6845, array( 'borders' => $no_borders, 'margins' => array( 'top' => 25, 'left' => 0, 'bottom' => 25, 'right' => 60 ) ) ),
+					self::tc( self::p( array( self::r( $icd, array( 'size' => 22, 'color' => self::DARK ) ) ), array( 'align' => 'right', 'before' => 15, 'after' => 15 ) ), self::TEXT_W - 6845, array( 'borders' => $no_borders, 'margins' => array( 'top' => 25, 'left' => 60, 'bottom' => 25, 'right' => 0 ) ) ),
 				);
 			}
-			$x .= self::table( array( 6500, 2526 ), array( 'top' => $none, 'left' => $none, 'bottom' => $none, 'right' => $none, 'insideH' => $none, 'insideV' => $none ), $rows );
+			$x .= self::table( array( 6845, self::TEXT_W - 6845 ), array( 'top' => $none, 'left' => $none, 'bottom' => $none, 'right' => $none, 'insideH' => $none, 'insideV' => $none ), $rows );
 		} else {
 			$x .= self::ltr_text( '0', 20, 40 );
 		}
@@ -197,12 +205,12 @@ class Shoval_Intake_Docx {
 		// 6. Other medical conditions.
 		$other = isset( $s['otherMedicalConditions'] ) ? trim( (string) $s['otherMedicalConditions'] ) : '';
 		$x    .= self::ltr_heading( 'Other medical conditions:', 120, 40 );
-		$x    .= self::ltr_text( $other !== '' ? $other : '0', 15, 60 );
+		$x    .= self::left_values( $other, 15, 60 );
 
-		// 7. Rx.
+		// 7. Rx. – one medication per line.
 		$rx = isset( $s['rxTreatments'] ) ? trim( (string) $s['rxTreatments'] ) : '';
 		$x .= self::ltr_heading( 'Rx.', 120, 40 );
-		$x .= self::ltr_text( $rx !== '' ? $rx : '0', 15, 120 );
+		$x .= self::left_values( $rx, 15, 120 );
 
 		// 8. Hebrew narrative.
 		$x .= self::rtl_para( array( self::rr( 'שלום רב,' ) ), 120, 60 );
@@ -238,10 +246,10 @@ class Shoval_Intake_Docx {
 				}
 			}
 		} else {
-			$x .= self::rtl_para( array( self::rr( $mse_lead ), self::rr( '___________________________________________________________________', array( 'color' => self::GREY ) ) ), 80, 40 );
-			for ( $i = 0; $i < 3; $i++ ) {
-				$x .= self::rtl_para( array( self::rr( self::BLANK, array( 'color' => self::GREY ) ) ), 40, 40 );
-			}
+			// Blank ruled lines for the physician, with the heading kept on the same page as the lines.
+			$label = $is_female ? 'בבדיקתה המנטלית:' : 'בבדיקתו המנטלית:';
+			$x    .= self::p( array( self::rr( $label ) ), array( 'bidi' => true, 'keep' => true, 'align' => 'right', 'before' => 80, 'after' => 0, 'line' => 280 ) );
+			$x    .= self::rule_lines( 4 );
 		}
 
 		// Clinical impression – entire paragraph bold.
@@ -253,16 +261,15 @@ class Shoval_Intake_Docx {
 				}
 			}
 		} else {
-			$lead = $full_name . ( $is_female ? ' אובחנה במרפאתי כסובלת מ' : ' אובחן במרפאתי כסובל מ' ) . '_________________________________________________________';
-			$x   .= self::rtl_para( array( self::rr( $lead, array( 'bold' => true ) ) ), 120, 40 );
-			$x   .= self::rtl_para( array( self::rr( self::BLANK, array( 'bold' => true, 'color' => self::GREY ) ) ), 40, 80 );
+			$lead = $full_name . ( $is_female ? ' אובחנה במרפאתי כסובלת מ-' : ' אובחן במרפאתי כסובל מ-' );
+			$x   .= self::p( array( self::rr( $lead, array( 'bold' => true ) ) ), array( 'bidi' => true, 'keep' => true, 'align' => 'right', 'before' => 160, 'after' => 0, 'line' => 280 ) );
+			$x   .= self::rule_lines( 2 );
 		}
 
-		// 9. Treatment plan.
-		$x .= self::rtl_para(
+		// 9. Treatment plan (the heading never stays alone at the bottom of a page).
+		$x .= self::p(
 			array( self::rr( 'בהתאם למצב' . ( $is_female ? 'ה' : 'ו' ) . ', הומלצה התכנית הטיפולית הבאה, אשר פורטה והוסברה בעל פה גם במרפאה:', array( 'bold' => true, 'underline' => true ) ) ),
-			180,
-			100
+			array( 'bidi' => true, 'keep' => true, 'align' => 'right', 'before' => 180, 'after' => 100, 'line' => 280 )
 		);
 		$plan        = isset( $s['treatmentPlan'] ) && is_array( $s['treatmentPlan'] ) ? $s['treatmentPlan'] : array();
 		$plan_blanks = ! $plan;
@@ -277,37 +284,58 @@ class Shoval_Intake_Docx {
 				$x    .= self::rtl_para( array( self::rr( ( $i + 1 ) . '. ' ), self::rr( $clean ) ), 60, 60 );
 			}
 		} else {
-			for ( $i = 1; $i <= 3; $i++ ) {
-				$x .= self::rtl_para( array( self::rr( $i . '. ' ), self::rr( '_______________________________________________________________________________', array( 'color' => self::GREY ) ) ), 70, 40 );
-			}
+			$x .= self::rule_lines( 3, true );
 		}
 
-		// 10. Closing.
-		$x .= self::rtl_para( array( self::rr( ! empty( $s['closingGreeting'] ) ? $s['closingGreeting'] : 'בכבוד רב ובברכה,' ) ), 180, 100 );
-
-		// 11. Stamp box.
-		$x .= self::stamp_table( $has_image );
-
-		// Contact bar at the bottom of the body.
-		$x .= self::p( array(), array( 'before' => 200, 'after' => 0 ) );
-		$top14   = array( 'top' => $navy14, 'bottom' => $none, 'left' => $none, 'right' => $none );
-		$contact = function ( $text, $rtl ) {
-			return $rtl
-				? self::p( array( self::r( $text, array( 'size' => 18, 'color' => self::NAVY, 'rtl' => true ) ) ), array( 'bidi' => true, 'align' => 'right', 'before' => 15, 'after' => 15 ) )
-				: self::p( array( self::r( $text, array( 'size' => 18, 'color' => self::NAVY ) ) ), array( 'align' => 'left', 'before' => 15, 'after' => 15 ) );
-		};
-		$x .= self::table(
-			array( 4513, 4513 ),
-			array( 'top' => $navy14, 'left' => $none, 'bottom' => $none, 'right' => $none, 'insideH' => $none, 'insideV' => $none ),
-			array(
-				array(
-					self::tc( $contact( 'Cell: 054-4493441 :נייד', false ) . $contact( 'Email: shovgal@tau.ac.il :אימייל', false ), 4513, array( 'borders' => $top14, 'margins' => array( 'top' => 50, 'left' => 20, 'bottom' => 30, 'right' => 20 ) ) ),
-					self::tc( $contact( "Tel: 03-5492263 :טל'", true ) . $contact( 'Fax: 03-5471283 :פקס', true ), 4513, array( 'borders' => $top14, 'margins' => array( 'top' => 50, 'left' => 20, 'bottom' => 30, 'right' => 20 ) ) ),
-				),
-			)
+		// 10. Closing – kept on the same page as the stamp.
+		$x .= self::p(
+			array( self::rr( ! empty( $s['closingGreeting'] ) ? $s['closingGreeting'] : 'בכבוד רב ובברכה,' ) ),
+			array( 'bidi' => true, 'keep' => true, 'align' => 'right', 'before' => 180, 'after' => 100, 'line' => 280 )
 		);
 
+		// 11. Stamp box. The clinic contact details are in the page footer (every page), so they are
+		// not repeated here – a second copy at the end of the body used to spill onto an empty page.
+		$x .= self::stamp_table( $has_image );
+
 		return $x;
+	}
+
+	/**
+	 * A bilingual contact line such as "Tel: 03-5492263 :טל׳".
+	 * Written as a left-to-right paragraph, so it reads "Tel: …" from the left and "טל׳: …" from the right.
+	 * The Hebrew geresh (׳) belongs to the Hebrew word, unlike an ASCII apostrophe, which would jump to the wrong side.
+	 */
+	private static function contact_line( $text, $align, $size ) {
+		return self::p( array( self::r( $text, array( 'size' => $size, 'color' => self::NAVY ) ) ), array( 'align' => $align, 'before' => 15, 'after' => 15 ) );
+	}
+
+	/**
+	 * Full-width ruled lines for the physician to fill in (a borderless table whose rows are underlined).
+	 * Real rules, unlike rows of "____", never wrap and always end exactly at both margins.
+	 *
+	 * @param int  $count    Number of lines.
+	 * @param bool $numbered Start each line with "1.", "2." … (treatment plan).
+	 */
+	private static function rule_lines( $count, $numbered = false ) {
+		$grey = array( 'single', 6, self::GREY );
+		$none = array( 'none' );
+		$rows = array();
+		for ( $i = 1; $i <= $count; $i++ ) {
+			$runs   = $numbered ? array( self::rr( $i . '.' ) ) : array();
+			$rows[] = '<w:trPr><w:trHeight w:val="400" w:hRule="atLeast"/><w:cantSplit/></w:trPr>'
+				. self::tc(
+					self::p( $runs, array( 'bidi' => true, 'align' => 'right', 'before' => 120, 'after' => 0 ) ),
+					self::TEXT_W,
+					array( 'margins' => array( 'left' => 0, 'right' => 0 ) )
+				);
+		}
+		return self::table(
+			array( self::TEXT_W ),
+			array( 'top' => $none, 'left' => $none, 'bottom' => $grey, 'right' => $none, 'insideH' => $grey, 'insideV' => $none ),
+			array_map( function ( $row ) {
+				return array( $row );
+			}, $rows )
+		);
 	}
 
 	private static function stamp_table( $has_image ) {
@@ -319,8 +347,10 @@ class Shoval_Intake_Docx {
 			? '<w:r>' . self::drawing( 'rId4', 38, 38 ) . '</w:r>'
 			: self::r( '🧠', array( 'size' => 28, 'color' => self::NAVY, 'font' => false ) );
 
+		// The stamp never splits across pages: rows cannot break, and the first row is kept with the second.
+		$no_split  = '<w:trPr><w:cantSplit/></w:trPr>';
 		$logo_cell = self::tc(
-			'<w:p><w:pPr><w:spacing w:after="10" w:before="10"/><w:jc w:val="center"/></w:pPr>' . $logo . '</w:p>',
+			'<w:p><w:pPr><w:keepNext/><w:bidi w:val="0"/><w:spacing w:after="10" w:before="10"/><w:jc w:val="center"/></w:pPr>' . $logo . '</w:p>',
 			1100,
 			array(
 				'borders' => array( 'top' => $s10, 'left' => $s10, 'bottom' => $s6, 'right' => $no ),
@@ -328,8 +358,8 @@ class Shoval_Intake_Docx {
 			)
 		);
 		$name_cell = self::tc(
-			self::p( array( self::r( "פרופ' גל שובל", array( 'bold' => true, 'size' => 21, 'color' => self::NAVY, 'rtl' => true ) ) ), array( 'bidi' => true, 'align' => 'center', 'before' => 5, 'after' => 5 ) )
-			. self::p( array( self::r( 'פסיכיאטר ילדים, נוער ומבוגרים', array( 'size' => 17, 'color' => self::NAVY, 'rtl' => true ) ) ), array( 'bidi' => true, 'align' => 'center', 'before' => 5, 'after' => 10 ) ),
+			self::p( array( self::r( 'פרופ׳ גל שובל', array( 'bold' => true, 'size' => 21, 'color' => self::NAVY, 'rtl' => true ) ) ), array( 'bidi' => true, 'keep' => true, 'align' => 'center', 'before' => 5, 'after' => 5 ) )
+			. self::p( array( self::r( 'פסיכיאטר ילדים, נוער ומבוגרים', array( 'size' => 17, 'color' => self::NAVY, 'rtl' => true ) ) ), array( 'bidi' => true, 'keep' => true, 'align' => 'center', 'before' => 5, 'after' => 10 ) ),
 			2900,
 			array(
 				'borders' => array( 'top' => $s10, 'left' => $no, 'bottom' => $s6, 'right' => $s10 ),
@@ -349,7 +379,7 @@ class Shoval_Intake_Docx {
 		return self::table(
 			array( 1100, 2900 ),
 			array( 'top' => $s10, 'left' => $s10, 'bottom' => $s10, 'right' => $s10, 'insideH' => $s6, 'insideV' => $no ),
-			array( array( $logo_cell, $name_cell ), array( $license_cell ) ),
+			array( array( $no_split . $logo_cell, $name_cell ), array( $no_split . $license_cell ) ),
 			'right'
 		);
 	}
@@ -358,19 +388,19 @@ class Shoval_Intake_Docx {
 		$navy14 = array( 'single', 14, self::NAVY );
 		$none   = array( 'none' );
 		return self::table(
-			array( 4513, 4513 ),
+			array( self::HALF_W, self::HALF_W ),
 			array( 'top' => $navy14, 'left' => $none, 'bottom' => $none, 'right' => $none, 'insideH' => $none, 'insideV' => $none ),
 			array(
 				array(
 					self::tc(
-						self::p( array( self::r( 'Cell: 054-4493441 :נייד   |   Email: shovgal@tau.ac.il :אימייל', array( 'size' => 16, 'color' => self::NAVY ) ) ), array( 'align' => 'left', 'before' => 10, 'after' => 10 ) ),
-						4513,
-						array( 'margins' => array( 'top' => 30, 'left' => 20, 'bottom' => 20, 'right' => 20 ) )
+						self::contact_line( 'Cell: 054-4493441 :נייד', 'left', 17 ) . self::contact_line( 'Email: shovgal@tau.ac.il :אימייל', 'left', 17 ),
+						self::HALF_W,
+						array( 'margins' => array( 'top' => 50, 'left' => 0, 'bottom' => 20, 'right' => 60 ) )
 					),
 					self::tc(
-						self::p( array( self::r( "Tel: 03-5492263 :טל'   |   Fax: 03-5471283 :פקס", array( 'size' => 16, 'color' => self::NAVY, 'rtl' => true ) ) ), array( 'bidi' => true, 'align' => 'right', 'before' => 10, 'after' => 10 ) ),
-						4513,
-						array( 'margins' => array( 'top' => 30, 'left' => 20, 'bottom' => 20, 'right' => 20 ) )
+						self::contact_line( 'Tel: 03-5492263 :טל׳', 'right', 17 ) . self::contact_line( 'Fax: 03-5471283 :פקס', 'right', 17 ),
+						self::HALF_W,
+						array( 'margins' => array( 'top' => 50, 'left' => 60, 'bottom' => 20, 'right' => 0 ) )
 					),
 				),
 			)
@@ -382,11 +412,42 @@ class Shoval_Intake_Docx {
 	 * ------------------------------------------------------------------- */
 
 	private static function ltr_heading( $text, $before, $after ) {
-		return self::p( array( self::r( $text, array( 'bold' => true, 'underline' => true, 'size' => 22, 'color' => self::DARK ) ) ), array( 'bidi' => false, 'align' => 'left', 'before' => $before, 'after' => $after, 'line' => 260 ) );
+		return self::p( array( self::r( $text, array( 'bold' => true, 'underline' => true, 'size' => 22, 'color' => self::DARK ) ) ), array( 'bidi' => false, 'keep' => true, 'align' => 'left', 'before' => $before, 'after' => $after, 'line' => 260 ) );
 	}
 
 	private static function ltr_text( $text, $before, $after ) {
 		return self::p( array( self::r( $text, array( 'size' => 22, 'color' => self::DARK ) ) ), array( 'bidi' => false, 'align' => 'left', 'before' => $before, 'after' => $after, 'line' => 260 ) );
+	}
+
+	/** True if the text contains Hebrew letters. */
+	private static function has_hebrew( $text ) {
+		return (bool) preg_match( '/\p{Hebrew}/u', (string) $text );
+	}
+
+	/**
+	 * One line of the left-aligned English area (Dx. / Other medical conditions / Rx.).
+	 * A line that contains Hebrew (e.g. "ריטלין 10 מ"ג בבוקר") is written right-to-left, so its words
+	 * stay in reading order, but is still placed on the left under its English heading.
+	 */
+	private static function left_value( $text, $before, $after ) {
+		$hebrew = self::has_hebrew( $text );
+		return self::p(
+			array( self::r( $text, array( 'size' => 22, 'color' => self::DARK, 'rtl' => $hebrew ) ) ),
+			array( 'bidi' => $hebrew, 'align' => 'left', 'before' => $before, 'after' => $after, 'line' => 260 )
+		);
+	}
+
+	/** Several values, one per line ("\n"-separated, or "0" when empty). */
+	private static function left_values( $text, $before, $after ) {
+		$lines = array_values( array_filter( array_map( 'trim', explode( "\n", (string) $text ) ), 'strlen' ) );
+		if ( ! $lines ) {
+			$lines = array( '0' );
+		}
+		$x = '';
+		foreach ( $lines as $i => $line ) {
+			$x .= self::left_value( $line, $i === 0 ? $before : 0, $i === count( $lines ) - 1 ? $after : 0 );
+		}
+		return $x;
 	}
 
 	/** Hebrew run in the body text style (Arial 11pt, dark, RTL). */
@@ -398,18 +459,28 @@ class Shoval_Intake_Docx {
 		return self::p( $runs, array( 'bidi' => true, 'align' => 'right', 'before' => $before, 'after' => $after, 'line' => 280 ) );
 	}
 
-	/** Paragraph. $o: bidi, align (left|right|center|null), before, after, line. */
+	/**
+	 * Paragraph. $o: bidi (true = Hebrew, right-to-left), align (left|right|center, as seen on the page),
+	 * before, after, line.
+	 *
+	 * Every paragraph states its direction explicitly, so no viewer has to guess it from its own locale.
+	 * Alignment: in a right-to-left paragraph Word (and LibreOffice / Google Docs, which copy it) read
+	 * jc="left" / jc="right" as start / end of the line – so jc="right" puts Hebrew text on the LEFT.
+	 * A Hebrew paragraph that should sit on the right therefore gets no jc at all (start = right).
+	 */
 	private static function p( array $runs, array $o = array() ) {
-		$ppr = '';
-		if ( ! empty( $o['bidi'] ) ) {
-			$ppr .= '<w:bidi/>';
-		} elseif ( isset( $o['bidi'] ) && $o['bidi'] === false ) {
-			$ppr .= '<w:bidi w:val="false"/>';
-		}
+		$rtl = ! empty( $o['bidi'] );
+		$ppr = ! empty( $o['keep'] ) ? '<w:keepNext/>' : '';   // keep with the next paragraph (headings, closing + stamp)
+		$ppr .= $rtl ? '<w:bidi/>' : '<w:bidi w:val="0"/>';
 		$ppr .= '<w:spacing w:after="' . (int) ( isset( $o['after'] ) ? $o['after'] : 0 ) . '" w:before="' . (int) ( isset( $o['before'] ) ? $o['before'] : 0 ) . '"'
-			. ( isset( $o['line'] ) ? ' w:line="' . (int) $o['line'] . '"' : '' ) . '/>';
-		if ( ! empty( $o['align'] ) ) {
-			$ppr .= '<w:jc w:val="' . $o['align'] . '"/>';
+			. ( isset( $o['line'] ) ? ' w:line="' . (int) $o['line'] . '" w:lineRule="auto"' : '' ) . '/>';
+
+		$align = isset( $o['align'] ) ? (string) $o['align'] : '';
+		if ( $rtl ) {
+			$align = $align === 'right' ? '' : ( $align === 'left' ? 'right' : $align );
+		}
+		if ( $align !== '' ) {
+			$ppr .= '<w:jc w:val="' . $align . '"/>';
 		}
 		return '<w:p><w:pPr>' . $ppr . '</w:pPr>' . implode( '', $runs ) . '</w:p>';
 	}
@@ -436,7 +507,20 @@ class Shoval_Intake_Docx {
 			$rpr .= '<w:rtl/>';
 		}
 
-		$parts = explode( "\n", str_replace( "\r", '', (string) $text ) );
+		$text = str_replace( "\r", '', (string) $text );
+		if ( ! empty( $o['rtl'] ) && self::has_hebrew( $text ) ) {
+			// Inside Hebrew text, keep a short English phrase on one line ("Autism Spectrum Disorder - ASD"):
+			// a phrase broken across lines of a right-to-left paragraph reads out of order.
+			$text = preg_replace_callback(
+				'/[A-Za-z0-9][A-Za-z0-9\-]*(?: [A-Za-z0-9\-]+)+/',
+				function ( $m ) {
+					return strlen( $m[0] ) <= 40 ? str_replace( ' ', "\u{00A0}", $m[0] ) : $m[0];
+				},
+				$text
+			);
+		}
+
+		$parts = explode( "\n", $text );
 		$body  = '';
 		foreach ( $parts as $i => $part ) {
 			if ( $i > 0 ) {
@@ -481,15 +565,17 @@ class Shoval_Intake_Docx {
 	 * @param string   $align   Optional table alignment.
 	 */
 	private static function table( array $cols, array $borders, array $rows, $align = '' ) {
-		$x = '<w:tbl><w:tblPr><w:tblW w:type="dxa" w:w="' . (int) array_sum( $cols ) . '"/>';
+		// Tables are always left-to-right (cell 0 = left), stated explicitly: without bidiVisual="0"
+		// some viewers (e.g. LibreOffice) mirror the columns of a document that contains Hebrew.
+		$x = '<w:tbl><w:tblPr><w:bidiVisual w:val="0"/><w:tblW w:type="dxa" w:w="' . (int) array_sum( $cols ) . '"/>';
 		if ( $align !== '' ) {
 			$x .= '<w:jc w:val="' . $align . '"/>';
 		}
-		$x .= '<w:tblBorders>';
+		$x .= '<w:tblInd w:w="0" w:type="dxa"/><w:tblBorders>';
 		foreach ( array( 'top', 'left', 'bottom', 'right', 'insideH', 'insideV' ) as $side ) {
 			$x .= self::border( $side, isset( $borders[ $side ] ) ? $borders[ $side ] : array( 'none' ) );
 		}
-		$x .= '</w:tblBorders></w:tblPr><w:tblGrid>';
+		$x .= '</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>';
 		foreach ( $cols as $w ) {
 			$x .= '<w:gridCol w:w="' . (int) $w . '"/>';
 		}

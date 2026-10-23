@@ -71,18 +71,31 @@ defined( 'ABSPATH' ) || exit;
 					<input type="text" id="si-city" name="city" placeholder="למשל: רמת השרון" maxlength="80">
 				</div>
 				<div class="si-group">
-					<label for="si-parentsNames">שמות ההורים (עבור ילדים/נוער)</label>
-					<input type="text" id="si-parentsNames" name="parentsNames" placeholder="שמות פרטיים של ההורים" maxlength="120">
+					<label for="si-motherName">שם האם (עבור ילדים/נוער)</label>
+					<input type="text" id="si-motherName" name="motherName" placeholder="שם פרטי" maxlength="60">
+				</div>
+				<div class="si-group">
+					<label for="si-fatherName">שם האב (עבור ילדים/נוער)</label>
+					<input type="text" id="si-fatherName" name="fatherName" placeholder="שם פרטי" maxlength="60">
 				</div>
 				<div class="si-group">
 					<label for="si-childrenCount">מספר הילדים המשותפים של ההורים</label>
 					<input type="number" id="si-childrenCount" name="childrenCount" min="0" max="20" placeholder="0">
 				</div>
 				<div class="si-group">
+					<label for="si-familyPosition">מיקום הילד/ה במשפחה</label>
+					<select id="si-familyPosition" name="familyPosition">
+						<option value="">נא לבחור... (לדוגמה: בכור/ה)</option>
+						<?php foreach ( Shoval_Intake_Letter::FAMILY_POSITIONS as $si_value => $si_position ) : ?>
+							<option value="<?php echo esc_attr( $si_value ); ?>"><?php echo esc_html( $si_position[0] ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+				<div class="si-group">
 					<label for="si-phone"><span class="si-req">*</span> טלפון נייד</label>
 					<input type="tel" id="si-phone" name="phone" required placeholder="05X-XXXXXXX" autocomplete="tel" maxlength="30" dir="ltr">
 				</div>
-				<div class="si-group si-full">
+				<div class="si-group">
 					<label for="si-email"><span class="si-req">*</span> דואר אלקטרוני</label>
 					<input type="email" id="si-email" name="email" required placeholder="your@email.com" autocomplete="email" maxlength="120" dir="ltr">
 				</div>
@@ -176,7 +189,7 @@ defined( 'ABSPATH' ) || exit;
 		<section class="si-card si-consent-card">
 			<label class="si-consent" for="si-consent">
 				<input type="checkbox" id="si-consent" name="consent" value="1" required>
-				<span><span class="si-req">*</span> אני מאשר/ת שהמידע שמסרתי בשאלון ישמש את מרפאת פרופ' גל שובל לצורך ההערכה והטיפול, יישמר באופן מאובטח, ויעובד בין היתר באמצעות שירותי מחשוב חיצוניים (לרבות שירות בינה מלאכותית, ללא פרטים מזהים) לצורך הכנת טיוטת סיכום לרופא.</span>
+				<span><span class="si-req">*</span> אני מאשר/ת שהמידע שמסרתי בשאלון ישמש את מרפאת פרופ' גל שובל לצורך ההערכה והטיפול, יישמר באופן מאובטח, וישמש להכנת טיוטת סיכום לרופא.</span>
 			</label>
 		</section>
 

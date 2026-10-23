@@ -22,3 +22,6 @@
 *.docx
 *.zip
 *.log
+
+# The clinic stamp of the Word letter: in the plugin folder and the zip, never in this public repository.
+shoval-intake/assets/letter/stamp.png

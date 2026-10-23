@@ -106,8 +106,9 @@ class Shoval_Intake_Admin {
 		self::row( 'מין', $g( 'gender' ) );
 		self::row( 'גיל', $g( 'age' ) );
 		self::row( 'יישוב', $g( 'city' ) );
-		self::row( 'שמות ההורים', $g( 'parentsNames' ) );
+		self::row( 'הורים', Shoval_Intake_Letter::parents_label( $d ) );
 		self::row( 'מספר ילדים במשפחה', $g( 'childrenCount' ) );
+		self::row( 'מיקום במשפחה', Shoval_Intake_Letter::family_position_label( $d ) );
 		self::row( 'טלפון', $g( 'phone' ) );
 		self::row( 'דוא"ל', $g( 'email' ) );
 		self::row( 'סיבת הפנייה', $g( 'referralReason' ) );
@@ -158,10 +159,6 @@ class Shoval_Intake_Admin {
 		if ( $emailed ) {
 			echo '<p>נשלח למייל: ' . esc_html( wp_date( 'd/m/Y H:i', $emailed, new DateTimeZone( 'Asia/Jerusalem' ) ) ) . ' (' . esc_html( (string) get_post_meta( $post->ID, '_si_emailed_via', true ) ) . ')</p>';
 		}
-		$source = (string) get_post_meta( $post->ID, '_si_source', true );
-		if ( $source !== '' ) {
-			echo '<p>מקור ההצעה לאבחנות: ' . esc_html( strpos( $source, 'gemini:' ) === 0 ? 'Google Gemini (' . substr( $source, 7 ) . ')' : 'כללים קבועים (ללא AI)' ) . '</p>';
-		}
 
 		if ( get_post_meta( $post->ID, '_si_docx', true ) ) {
 			echo '<p><a class="button button-primary" href="' . esc_url( self::download_url( $post->ID, 'docx' ) ) . '">הורדת טיוטת הסיכום (Word)</a></p>';
@@ -188,12 +185,9 @@ class Shoval_Intake_Admin {
 
 		$which = isset( $_GET['file'] ) ? sanitize_text_field( wp_unslash( $_GET['file'] ) ) : '';
 		if ( $which === 'docx' ) {
-			$summary = Shoval_Intake_Storage::get_summary( $post_id );
-			$name    = isset( $summary['patient']['fullName'] ) ? $summary['patient']['fullName'] : 'מטופל';
-			$date    = isset( $summary['date'] ) ? str_replace( '/', '-', $summary['date'] ) : '';
-			$stored  = (string) get_post_meta( $post_id, '_si_docx', true );
-			$label   = 'סיכום_קליני_' . preg_replace( '/\s+/u', '_', $name ) . '_' . $date . '.docx';
-			$type    = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+			$stored = (string) get_post_meta( $post_id, '_si_docx', true );
+			$label  = Shoval_Intake_Email::docx_filename( (array) Shoval_Intake_Storage::get_summary( $post_id ) );
+			$type   = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 		} else {
 			$files = Shoval_Intake_Storage::get_files( $post_id );
 			$index = ctype_digit( $which ) ? (int) $which : -1;
@@ -245,7 +239,7 @@ class Shoval_Intake_Admin {
 			$ok = $_GET['si_reprocessed'] === 'ok';
 			echo '<div class="notice notice-' . ( $ok ? 'success' : 'error' ) . ' is-dismissible"><p>' . ( $ok ? 'הטיוטה נשלחה שוב למייל.' : 'השליחה נכשלה – ראו את הודעת השגיאה בתיבת "טיוטת סיכום ומייל".' ) . '</p></div>';
 		}
-		if ( ! is_email( (string) Shoval_Intake_Settings::get( 'report_email' ) ) ) {
+		if ( ! Shoval_Intake_Settings::report_emails() ) {
 			echo '<div class="notice notice-warning"><p>לא הוגדר מייל לקבלת הסיכומים. <a href="' . esc_url( admin_url( 'edit.php?post_type=' . Shoval_Intake_Storage::POST_TYPE . '&page=' . Shoval_Intake_Settings::PAGE ) ) . '">להגדרות</a></p></div>';
 		}
 	}

@@ -13,14 +13,14 @@ The installable plugin is attached to the latest [release](../../releases) as `s
 
 ## Configuration
 
-**WP Admin → שאלוני קבלה → הגדרות**: report e-mail, Google Gemini key, Resend key and sender.
-Keys can instead be defined in `wp-config.php` (they then take precedence and are not stored in the database):
+**WP Admin → שאלוני קבלה → הגדרות**: report e-mails (one or more, separated by commas), the Dx. and Rx.
+lists of the letter, Resend key and sender. These can instead be defined in `wp-config.php` (they then take
+precedence and are not stored in the database):
 
 ```php
-define( 'SHOVAL_INTAKE_GEMINI_API_KEY', '...' );
 define( 'SHOVAL_INTAKE_RESEND_API_KEY', '...' );
 define( 'SHOVAL_INTAKE_RESEND_FROM', 'Clinic <no-reply@example.com>' );
-define( 'SHOVAL_INTAKE_REPORT_EMAIL', 'reports@example.com' );
+define( 'SHOVAL_INTAKE_REPORT_EMAIL', 'reports@example.com, doctor@example.com' );
 ```
 
 No keys are stored in this repository. Never commit them.
@@ -30,11 +30,13 @@ No keys are stored in this repository. Never commit them.
 - Submissions are a private post type visible only to administrators; files are stored in
   `wp-content/uploads/shoval-intake-private/` behind `.htaccess` and are downloadable only by
   administrators. Submissions are deleted after a configurable retention period (default 90 days).
-- Gemini receives clinical fields only – never name, ID number, phone, e-mail, city or parents' names.
-- Every AI-suggested diagnosis must quote the questionnaire verbatim; unsupported diagnoses are dropped.
-  Without AI, a keyword rule set (whole-word Hebrew matching with negation) is used.
-- The draft never invents findings: mental-status examination and developmental history are left as
-  blank lines for the physician, and the e-mail is marked as a draft.
+- No questionnaire data is sent to AI services. The letter is the clinic's fixed template: every line of
+  the Dx. and Rx. lists, and the clinic's standard background, mental-status examination, impression and
+  treatment plan in the patient's gender. Name, age, city, parents, family position and medications come
+  from the questionnaire; the letter date leaves the day blank. The e-mail is marked as a draft for the physician.
+- The letterhead and stamp images (`shoval-intake/assets/letter/`) are read from disk only; the folder is
+  closed to the web by `.htaccess`. The stamp image (`stamp.png`) is not in this public repository – it is
+  part of the plugin zip only.
 - Spam protection: signed form token, honeypot, 5 submissions per hour per IP. Consent is required.
 - E-mail goes through Resend, falling back to the site's `wp_mail()`.
 
@@ -43,9 +45,9 @@ No keys are stored in this repository. Never commit them.
 | Path | Contents |
 |---|---|
 | `shoval-intake/shoval-intake.php` | Plugin bootstrap |
-| `shoval-intake/includes/` | REST endpoint, storage, AI and rules, Word generator, e-mail, admin, settings, homepage buttons |
+| `shoval-intake/includes/` | REST endpoint, storage, letter content, Word generator, e-mail, admin, settings, homepage buttons |
 | `shoval-intake/templates/` | Questionnaire page and form |
-| `shoval-intake/assets/` | CSS, JS, logo and stamp images |
+| `shoval-intake/assets/` | CSS, JS, logo; `letter/` – letterhead, footer icons and stamp of the Word letter |
 | `local-server/` | `router.php` and `start-local.cmd` for running a local copy with PHP's built-in server |
 
 ## Local development

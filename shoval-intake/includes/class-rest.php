@@ -140,8 +140,10 @@ class Shoval_Intake_Rest {
 			'idNumber'             => preg_replace( '/\D/', '', self::text( $p, 'idNumber', 20 ) ),
 			'age'                  => self::text( $p, 'age', 20 ),
 			'city'                 => self::text( $p, 'city', 80 ),
-			'parentsNames'         => self::text( $p, 'parentsNames', 120 ),
+			'motherName'           => self::text( $p, 'motherName', 60 ),
+			'fatherName'           => self::text( $p, 'fatherName', 60 ),
 			'childrenCount'        => '',
+			'familyPosition'       => '',
 			'phone'                => preg_replace( '/[^\d+\-\s()]/', '', self::text( $p, 'phone', 30 ) ),
 			'email'                => sanitize_email( self::text( $p, 'email', 120 ) ),
 			'referralReason'       => self::textarea( $p, 'referralReason' ),
@@ -157,6 +159,10 @@ class Shoval_Intake_Rest {
 		$children = self::text( $p, 'childrenCount', 3 );
 		if ( ctype_digit( $children ) && (int) $children <= 20 ) {
 			$data['childrenCount'] = (string) (int) $children;
+		}
+		$position = self::text( $p, 'familyPosition', 10 );
+		if ( array_key_exists( $position, Shoval_Intake_Letter::FAMILY_POSITIONS ) ) {
+			$data['familyPosition'] = $position;
 		}
 		if ( ! $data['noCurrentMedications'] ) {
 			$data['currentMedications'] = self::json_rows( $p, 'currentMedications', array( 'name', 'dosage' ) );

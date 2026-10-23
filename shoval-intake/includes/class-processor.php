@@ -1,6 +1,6 @@
 <?php
 /**
- * Background pipeline for a saved submission: summary (AI / rules) -> Word -> e-mail.
+ * Background pipeline for a saved submission: letter content -> Word -> e-mail.
  *
  * The patient gets an answer as soon as the questionnaire is saved. Processing
  * then runs right after the response is sent (PHP-FPM / LiteSpeed), or through
@@ -95,8 +95,7 @@ class Shoval_Intake_Processor {
 			}
 
 			if ( ! $summary || $docx === '' ) {
-				$built   = Shoval_Intake_AI::build_summary( $data );
-				$summary = $built['summary'];
+				$summary = Shoval_Intake_Letter::build_summary( $data );
 				$docx    = Shoval_Intake_Docx::generate( $summary );
 
 				$docx_name = Shoval_Intake_Storage::random_name( 'docx' );
@@ -112,7 +111,6 @@ class Shoval_Intake_Processor {
 				}
 				update_post_meta( $post_id, '_si_docx', $docx_name );
 				update_post_meta( $post_id, '_si_summary', wp_slash( wp_json_encode( $summary, JSON_UNESCAPED_UNICODE ) ) );
-				update_post_meta( $post_id, '_si_source', $built['source'] );
 			}
 
 			$result = Shoval_Intake_Email::send_report( $summary, $docx, $data, self::uploads( $post_id ), $post_id );
@@ -173,7 +171,7 @@ class Shoval_Intake_Processor {
 		}
 	}
 
-	/** Settings screen "send test e-mail": a fictional patient, rules only. */
+	/** Settings screen "send test e-mail": a fictional patient. */
 	public static function send_test_email() {
 		$data = array(
 			'firstName'            => 'ישראל',
@@ -182,8 +180,10 @@ class Shoval_Intake_Processor {
 			'idNumber'             => '000000018',
 			'age'                  => '9',
 			'city'                 => 'רמת השרון',
-			'parentsNames'         => 'דנה ויוסי',
+			'motherName'           => 'דנה',
+			'fatherName'           => 'יוסי',
 			'childrenCount'        => '3',
+			'familyPosition'       => '2',
 			'phone'                => '050-0000000',
 			'email'                => 'test@example.com',
 			'referralReason'       => 'בדיקת מערכת – קשיי קשב וריכוז בכיתה, אי שקט ופעלתנות יתר.',
@@ -194,9 +194,9 @@ class Shoval_Intake_Processor {
 			'previousDocuments'    => 'אבחון דידקטי משנת 2025 (לדוגמה).',
 		);
 		try {
-			$built = Shoval_Intake_AI::build_summary( $data, false );
-			$docx  = Shoval_Intake_Docx::generate( $built['summary'] );
-			return Shoval_Intake_Email::send_report( $built['summary'], $docx, $data, array(), 0 );
+			$summary = Shoval_Intake_Letter::build_summary( $data );
+			$docx    = Shoval_Intake_Docx::generate( $summary );
+			return Shoval_Intake_Email::send_report( $summary, $docx, $data, array(), 0 );
 		} catch ( Throwable $e ) {
 			return array( 'ok' => false, 'via' => '', 'error' => $e->getMessage() );
 		}

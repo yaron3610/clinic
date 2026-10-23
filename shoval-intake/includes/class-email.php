@@ -22,14 +22,13 @@ class Shoval_Intake_Email {
 	 * @return array [ 'ok' => bool, 'via' => string, 'error' => string ]
 	 */
 	public static function send_report( array $summary, $docx, array $data, array $uploads, $post_id = 0 ) {
-		$to = (string) Shoval_Intake_Settings::get( 'report_email' );
-		if ( ! is_email( $to ) ) {
+		$to = Shoval_Intake_Settings::report_emails();
+		if ( ! $to ) {
 			return array( 'ok' => false, 'via' => '', 'error' => 'לא הוגדר מייל תקין לקבלת הסיכומים.' );
 		}
 
 		$name      = ! empty( $summary['patient']['fullName'] ) ? $summary['patient']['fullName'] : 'מטופל';
-		$date      = str_replace( '/', '-', isset( $summary['date'] ) ? $summary['date'] : '' );
-		$docx_name = self::safe_filename( 'סיכום_קליני_' . preg_replace( '/\s+/u', '_', $name ) . '_' . $date ) . '.docx';
+		$docx_name = self::docx_filename( $summary );
 
 		$attachments = array(
 			array(
@@ -94,11 +93,21 @@ class Shoval_Intake_Email {
 		return array( 'ok' => false, 'via' => '', 'error' => $error . 'wp_mail: ' . $result );
 	}
 
-	/** @return true|string */
-	private static function send_resend( $to, $subject, $html, $text, array $attachments ) {
+	/** "סיכום_קליני_<name>_<date>.docx" – dated by the day the draft was made (the letter itself leaves the day blank). */
+	public static function docx_filename( array $summary ) {
+		$name = ! empty( $summary['patient']['fullName'] ) ? $summary['patient']['fullName'] : 'מטופל';
+		$date = ! empty( $summary['issued'] ) ? $summary['issued'] : ( isset( $summary['date'] ) ? $summary['date'] : '' );
+		return self::safe_filename( 'סיכום_קליני_' . preg_replace( '/\s+/u', '_', $name ) . '_' . str_replace( '/', '-', $date ) ) . '.docx';
+	}
+
+	/**
+	 * @param string[] $to
+	 * @return true|string
+	 */
+	private static function send_resend( array $to, $subject, $html, $text, array $attachments ) {
 		$payload = array(
 			'from'        => (string) Shoval_Intake_Settings::get( 'resend_from' ) ?: 'onboarding@resend.dev',
-			'to'          => array( $to ),
+			'to'          => $to,
 			'subject'     => $subject,
 			'html'        => $html,
 			'text'        => $text,
@@ -128,8 +137,11 @@ class Shoval_Intake_Email {
 		return isset( $json['message'] ) ? (string) $json['message'] : 'HTTP ' . $code;
 	}
 
-	/** @return true|string */
-	private static function send_wp_mail( $to, $subject, $html, array $attachments ) {
+	/**
+	 * @param string[] $to
+	 * @return true|string
+	 */
+	private static function send_wp_mail( array $to, $subject, $html, array $attachments ) {
 		// wp_mail() names attachments after their file, so write named copies to a private temp folder.
 		$tmp = Shoval_Intake_Storage::base_dir() . '/tmp-' . Shoval_Intake_Storage::random_name();
 		if ( ! Shoval_Intake_Storage::ensure_private_dir() || ! wp_mkdir_p( $tmp ) ) {
@@ -271,14 +283,15 @@ class Shoval_Intake_Email {
 		$h .= '<div dir="rtl" style="text-align: center; margin: 24px 0 20px 0; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 10px;"><h2 dir="rtl" style="font-size: 18px; font-weight: bold; color: #002060; margin: 0; text-decoration: underline; text-align: center;">הנדון: ' . self::e( $subject ) . '</h2></div>';
 
 		// Patient card (with contact details for the clinic).
-		$phone = isset( $data['phone'] ) ? $data['phone'] : '';
-		$email = isset( $data['email'] ) ? $data['email'] : '';
+		$phone   = isset( $data['phone'] ) ? $data['phone'] : '';
+		$email   = isset( $data['email'] ) ? $data['email'] : '';
+		$parents = Shoval_Intake_Letter::parents_label( $data );
 		$h    .= '<div dir="rtl" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 18px; margin-bottom: 22px; direction: rtl; text-align: right;">'
 			. '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" dir="rtl" style="width: 100%; border-collapse: collapse; font-size: 14px; direction: rtl; text-align: right;">'
 			. self::card_row( 'שם המטופל/ת:', self::e( $name ), 'תעודת זהות:', self::ltr( ! empty( $p['idNumber'] ) ? $p['idNumber'] : 'לא צוין' ) )
 			. self::card_row( 'גיל:', ! empty( $p['age'] ) ? self::e( $p['age'] ) : $dash, 'יישוב מגורים:', self::e( ! empty( $p['city'] ) ? $p['city'] : $dash ) )
 			. self::card_row( 'טלפון:', $phone !== '' ? '<a href="tel:' . esc_attr( preg_replace( '/[^\d+]/', '', $phone ) ) . '" dir="ltr" style="color: #002060; text-decoration: none; unicode-bidi: embed;">' . self::e( $phone ) . '</a>' : $dash, 'דוא"ל:', $email !== '' ? '<a href="mailto:' . esc_attr( $email ) . '" dir="ltr" style="color: #002060; text-decoration: none; unicode-bidi: embed;">' . self::e( $email ) . '</a>' : $dash )
-			. ( ! empty( $data['parentsNames'] ) || ! empty( $p['gender'] ) ? self::card_row( 'מין:', self::e( ! empty( $p['gender'] ) ? $p['gender'] : $dash ), 'שמות ההורים:', self::e( ! empty( $data['parentsNames'] ) ? $data['parentsNames'] : $dash ) ) : '' )
+			. ( $parents !== '' || ! empty( $p['gender'] ) ? self::card_row( 'מין:', self::e( ! empty( $p['gender'] ) ? $p['gender'] : $dash ), 'הורים:', self::e( $parents !== '' ? $parents : $dash ) ) : '' )
 			. '</table></div>';
 
 		$h .= self::section( 'אבחנות (Diagnoses / Dx.):', $dx, true );
@@ -295,6 +308,9 @@ class Shoval_Intake_Email {
 		}
 		if ( ! empty( $s['medicalDevelopmentalBackground'] ) ) {
 			$h .= self::section( 'רקע רפואי, התפתחותי ומשפחתי:', self::para( $s['medicalDevelopmentalBackground'] ) );
+		}
+		if ( ! empty( $s['medicationHistory'] ) ) {
+			$h .= self::section( 'טיפול תרופתי כעת ובעבר:', self::para( $s['medicationHistory'] ) );
 		}
 		if ( ! empty( $s['mentalStatusExamination'] ) ) {
 			$h .= self::section( 'בדיקה פסיכיאטרית (Mental Status Examination):', self::para( $s['mentalStatusExamination'] ) );

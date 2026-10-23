@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin settings (API keys, report e-mail, retention) and the settings screen.
+ * Plugin settings (report e-mails, Dx./Rx. lists, Resend key, retention) and the settings screen.
  *
- * Every secret can also be defined as a constant in wp-config.php, which takes
+ * These can also be defined as constants in wp-config.php, which take
  * precedence over the value saved in the database:
- *   SHOVAL_INTAKE_GEMINI_API_KEY, SHOVAL_INTAKE_RESEND_API_KEY,
- *   SHOVAL_INTAKE_RESEND_FROM, SHOVAL_INTAKE_REPORT_EMAIL
+ *   SHOVAL_INTAKE_RESEND_API_KEY, SHOVAL_INTAKE_RESEND_FROM,
+ *   SHOVAL_INTAKE_REPORT_EMAIL (one address, or several separated by commas)
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -16,24 +16,40 @@ class Shoval_Intake_Settings {
 	const PAGE   = 'shoval-intake-settings';
 
 	private static $constants = array(
-		'gemini_api_key' => 'SHOVAL_INTAKE_GEMINI_API_KEY',
 		'resend_api_key' => 'SHOVAL_INTAKE_RESEND_API_KEY',
 		'resend_from'    => 'SHOVAL_INTAKE_RESEND_FROM',
 		'report_email'   => 'SHOVAL_INTAKE_REPORT_EMAIL',
 	);
 
-	private static $secrets = array( 'gemini_api_key', 'resend_api_key' );
+	private static $secrets = array( 'resend_api_key' );
 
 	public static function defaults() {
 		return array(
-			'ai_enabled'     => 1,
-			'gemini_api_key' => '',
-			'gemini_models'  => 'gemini-3.1-flash-lite, gemini-flash-latest',
 			'resend_api_key' => '',
 			'resend_from'    => 'onboarding@resend.dev',
 			'report_email'   => get_option( 'admin_email' ),
 			'attach_uploads' => 1,
 			'retention_days' => 90,
+			// The clinic's lists ("אבחנות" and "תרופות"): every line is written in every letter.
+			'dx_list'        => implode(
+				"\n",
+				array(
+					'Autism spectrum disorder (ASD) | F84.0',
+					'Social communications disorder (SCD) | F80.82',
+					'ADHD (dysregulation disorder) | F90.9',
+					'Anxiety disorder | F41.9',
+					'Depressive disorder | F32',
+					'Mixed anxiety and depression disorder | F32',
+					'Emotional dysregulation | F60.3',
+					'OCD | F42',
+					'Post-traumatic stress disorder (PTSD) | F43.1',
+					'Language developmental delay | R62.5',
+					'Enuresis | F98.0',
+					'Learning disabilities | F81.9',
+					'Other specified problems related to psychosocial circumstances | Z65.8',
+				)
+			),
+			'rx_list'        => "0\nT. Prizma 20 mg/d\nT. Ritalin LA 20 mg/d\nT. Risperdal 0.5 mg/d",
 		);
 	}
 
@@ -54,12 +70,44 @@ class Shoval_Intake_Settings {
 		return isset( self::$constants[ $key ] ) && defined( self::$constants[ $key ] ) && constant( self::$constants[ $key ] ) !== '';
 	}
 
-	/** Gemini model names to try, in order. */
-	public static function gemini_models() {
-		$models = array_filter( array_map( 'trim', explode( ',', (string) self::get( 'gemini_models' ) ) ) );
-		return array_values( array_filter( $models, function ( $m ) {
-			return (bool) preg_match( '/^[a-z0-9.\-]+$/i', $m );
-		} ) );
+	/** The addresses that receive the reports (the setting may hold several, separated by commas). */
+	public static function report_emails() {
+		$list = preg_split( '/[\s,;]+/', (string) self::get( 'report_email' ), -1, PREG_SPLIT_NO_EMPTY );
+		return array_values( array_unique( array_filter( array_map( 'sanitize_email', $list ), 'is_email' ) ) );
+	}
+
+	/**
+	 * The Dx. lines of the letter, in order: "name | ICD-10", or the name followed by the code
+	 * (as in the clinic's "אבחנות" file).
+	 *
+	 * @return array[] [ [ 'name' => ..., 'icd10' => ... ] ]
+	 */
+	public static function diagnoses() {
+		$out = array();
+		foreach ( preg_split( '/\R/u', (string) self::get( 'dx_list' ) ) as $line ) {
+			$line = trim( $line );
+			if ( $line === '' ) {
+				continue;
+			}
+			$bar = strrpos( $line, '|' );
+			if ( $bar !== false ) {
+				$name = trim( substr( $line, 0, $bar ) );
+				$code = trim( substr( $line, $bar + 1 ) );
+			} elseif ( preg_match( '/^(.*\S)\s+([A-Z]?\d{2}(?:\.\d+)?)$/iu', $line, $m ) ) {
+				$name = $m[1];
+				$code = strtoupper( $m[2] );
+			} else {
+				$name = $line;
+				$code = '';
+			}
+			$out[] = array( 'name' => $name, 'icd10' => $code );
+		}
+		return $out;
+	}
+
+	/** The Rx. lines of the letter, in order (including "0"). */
+	public static function medications() {
+		return array_values( array_filter( array_map( 'trim', preg_split( '/\R/u', (string) self::get( 'rx_list' ) ) ), 'strlen' ) );
 	}
 
 	public static function register() {
@@ -94,7 +142,8 @@ class Shoval_Intake_Settings {
 	public static function sanitize( $input ) {
 		$old   = self::all();
 		$input = is_array( $input ) ? $input : array();
-		$out   = $old;
+		// Only current settings are kept (older versions also stored a Gemini key, which is dropped here).
+		$out = array_intersect_key( $old, self::defaults() );
 
 		foreach ( self::$secrets as $key ) {
 			$value = isset( $input[ $key ] ) ? trim( (string) $input[ $key ] ) : '';
@@ -105,27 +154,45 @@ class Shoval_Intake_Settings {
 			}
 		}
 
-		$out['ai_enabled']     = empty( $input['ai_enabled'] ) ? 0 : 1;
 		$out['attach_uploads'] = empty( $input['attach_uploads'] ) ? 0 : 1;
-		$out['gemini_models']  = isset( $input['gemini_models'] ) ? sanitize_text_field( $input['gemini_models'] ) : $old['gemini_models'];
 		$out['retention_days'] = isset( $input['retention_days'] ) ? min( 3650, absint( $input['retention_days'] ) ) : $old['retention_days'];
 
-		foreach ( array( 'report_email', 'resend_from' ) as $key ) {
-			if ( ! isset( $input[ $key ] ) ) {
-				continue;
+		foreach ( array( 'dx_list', 'rx_list' ) as $key ) {
+			if ( isset( $input[ $key ] ) ) {
+				$out[ $key ] = mb_substr( sanitize_textarea_field( (string) $input[ $key ] ), 0, 5000 );
 			}
-			$raw = trim( wp_unslash( (string) $input[ $key ] ) );
+		}
+
+		if ( isset( $input['report_email'] ) ) {
+			$valid   = array();
+			$invalid = array();
+			foreach ( preg_split( '/[\s,;]+/', wp_unslash( (string) $input['report_email'] ), -1, PREG_SPLIT_NO_EMPTY ) as $raw ) {
+				$email = sanitize_email( $raw );
+				if ( is_email( $email ) ) {
+					$valid += array( strtolower( $email ) => $email );
+				} else {
+					$invalid[] = $raw;
+				}
+			}
+			$out['report_email'] = implode( ', ', $valid );
+			if ( $invalid ) {
+				add_settings_error( self::OPTION, 'report_email', 'הכתובות האלה אינן תקינות ולא נשמרו: ' . esc_html( implode( ', ', $invalid ) ) );
+			}
+		}
+
+		if ( isset( $input['resend_from'] ) ) {
+			$raw = trim( wp_unslash( (string) $input['resend_from'] ) );
 			// The sender may be written as "Clinic name <address@domain>".
-			if ( $key === 'resend_from' && preg_match( '/^(.*)<([^>]+)>$/u', $raw, $m ) && is_email( trim( $m[2] ) ) ) {
-				$label       = trim( sanitize_text_field( str_replace( array( '"', '<', '>' ), '', $m[1] ) ) );
-				$out[ $key ] = ( $label !== '' ? $label . ' ' : '' ) . '<' . sanitize_email( trim( $m[2] ) ) . '>';
-				continue;
-			}
-			$email = sanitize_email( $raw );
-			if ( $email || $raw === '' ) {
-				$out[ $key ] = $email;
+			if ( preg_match( '/^(.*)<([^>]+)>$/u', $raw, $m ) && is_email( trim( $m[2] ) ) ) {
+				$label              = trim( sanitize_text_field( str_replace( array( '"', '<', '>' ), '', $m[1] ) ) );
+				$out['resend_from'] = ( $label !== '' ? $label . ' ' : '' ) . '<' . sanitize_email( trim( $m[2] ) ) . '>';
 			} else {
-				add_settings_error( self::OPTION, $key, 'כתובת המייל "' . esc_html( $raw ) . '" אינה תקינה ולא נשמרה.' );
+				$email = sanitize_email( $raw );
+				if ( $email || $raw === '' ) {
+					$out['resend_from'] = $email;
+				} else {
+					add_settings_error( self::OPTION, 'resend_from', 'כתובת המייל "' . esc_html( $raw ) . '" אינה תקינה ולא נשמרה.' );
+				}
 			}
 		}
 
@@ -152,24 +219,19 @@ class Shoval_Intake_Settings {
 				<?php settings_fields( 'shoval_intake' ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
-						<th scope="row"><label for="si-report-email">מייל לקבלת הסיכומים</label></th>
-						<td><?php self::text_field( 'report_email', $s, 'email' ); ?>
-							<p class="description">לכתובת זו נשלח כל שאלון חדש, עם טיוטת הסיכום (Word) והקבצים שצורפו.</p></td>
+						<th scope="row"><label for="si-report-email">מיילים לקבלת הסיכומים</label></th>
+						<td><?php self::text_field( 'report_email', $s ); ?>
+							<p class="description">כל שאלון חדש נשלח לכתובות האלה, עם טיוטת הסיכום (Word) והקבצים שצורפו. אפשר לרשום כמה כתובות, מופרדות בפסיק.</p></td>
 					</tr>
 					<tr>
-						<th scope="row">עיבוד בבינה מלאכותית</th>
-						<td><label><input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[ai_enabled]" value="1" <?php checked( $s['ai_enabled'] ); ?>>
-							להשתמש ב-Google Gemini להצעת אבחנות, התרשמות ותוכנית טיפולית</label>
-							<p class="description">ל-Gemini נשלחים רק נתונים קליניים (מין, גיל, סיבת פנייה, תרופות ומסמכים) &ndash; ללא שם, ת.ז., טלפון, מייל או עיר. ללא AI הטיוטה נבנית מכללים קבועים.</p></td>
+						<th scope="row"><label for="si-dx-list">אבחנות (Dx.)</label></th>
+						<td><?php self::textarea_field( 'dx_list', $s, 14 ); ?>
+							<p class="description">כל השורות נכתבות בכל מכתב, בסדר הזה. שורה לכל אבחנה: שם האבחנה | קוד ICD-10.</p></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="si-gemini-key">Gemini API key</label></th>
-						<td><?php self::secret_field( 'gemini_api_key', $s ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="si-gemini-models">מודלי Gemini</label></th>
-						<td><?php self::text_field( 'gemini_models', $s ); ?>
-							<p class="description">לפי סדר עדיפות, מופרדים בפסיק.</p></td>
+						<th scope="row"><label for="si-rx-list">תרופות (Rx.)</label></th>
+						<td><?php self::textarea_field( 'rx_list', $s, 5 ); ?>
+							<p class="description">כל השורות נכתבות בכל מכתב, בסדר הזה (כולל 0). שורה לכל תרופה.</p></td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="si-resend-key">Resend API key</label></th>
@@ -238,6 +300,17 @@ class Shoval_Intake_Settings {
 			esc_attr( $key ),
 			esc_attr( $s[ $key ] ),
 			$key === 'resend_from' ? 'auto' : 'ltr'
+		);
+	}
+
+	private static function textarea_field( $key, $s, $rows ) {
+		printf(
+			'<textarea id="%1$s" name="%2$s[%3$s]" rows="%4$d" class="large-text code" dir="ltr">%5$s</textarea>',
+			esc_attr( 'si-' . str_replace( '_', '-', $key ) ),
+			esc_attr( self::OPTION ),
+			esc_attr( $key ),
+			(int) $rows,
+			esc_textarea( $s[ $key ] )
 		);
 	}
 
@@ -323,7 +396,7 @@ class Shoval_Intake_Settings {
 		}
 		$via = isset( $_GET['si_via'] ) ? sanitize_key( wp_unslash( $_GET['si_via'] ) ) : '';
 		if ( $_GET['si_test'] === 'ok' ) {
-			echo '<div class="notice notice-success"><p>מייל הבדיקה נשלח אל ' . esc_html( (string) self::get( 'report_email' ) ) . ( $via ? ' (דרך ' . esc_html( $via ) . ')' : '' ) . '.</p></div>';
+			echo '<div class="notice notice-success"><p>מייל הבדיקה נשלח אל ' . esc_html( implode( ', ', self::report_emails() ) ) . ( $via ? ' (דרך ' . esc_html( $via ) . ')' : '' ) . '.</p></div>';
 			return;
 		}
 		$error = get_transient( 'shoval_intake_test_error_' . get_current_user_id() );

@@ -25,6 +25,7 @@ function shoval_local_deny( $code = 403 ) {
 function shoval_local_is_private( $relative ) {
 	$relative = strtolower( $relative );
 	return strpos( $relative, '/wp-content/uploads/shoval-intake-private' ) === 0 // patient files
+		|| strpos( $relative, '/wp-content/plugins/shoval-intake/assets/letter' ) === 0 // letterhead and stamp images
 		|| strpos( $relative, '/wp-content/duplicator-backups' ) === 0           // site backups
 		|| strpos( $relative, '/wp-content/ai1wm-backups' ) === 0
 		|| strpos( $relative, '/.' ) !== false                                   // .htaccess, .user.ini, .git ...

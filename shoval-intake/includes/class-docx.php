@@ -332,7 +332,8 @@ class Shoval_Intake_Docx {
 			$x    .= self::rtl_para( array( self::rr( ( $i + 1 ) . '. ' ), self::rr( $clean ) ), 60, 80 );
 		}
 
-		// 9. Closing, kept on the same page as the stamp.
+		// 9. An empty line, then the closing, kept on the same page as the stamp.
+		$x .= self::rtl_para( array(), 0, 0 );
 		$x .= self::p(
 			array( self::rr( ! empty( $s['closingGreeting'] ) ? $s['closingGreeting'] : 'בכבוד רב ובברכה,' ) ),
 			array( 'bidi' => true, 'keep' => true, 'align' => 'right', 'before' => 180, 'after' => 60, 'line' => 280 )

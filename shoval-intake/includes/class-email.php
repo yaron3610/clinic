@@ -1,7 +1,7 @@
 <?php
 /**
  * Clinic e-mail: the RTL report e-mail (port of REPORT_AI/email_sender.ts and
- * rtl_email_engine.ts) and delivery through Resend, falling back to wp_mail().
+ * rtl_email_engine.ts) and delivery through Brevo, falling back to wp_mail().
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -19,12 +19,20 @@ class Shoval_Intake_Email {
 	 * @param array  $data    The original form answers.
 	 * @param array  $uploads [ [ 'name', 'path', 'size', 'type' ] ].
 	 * @param int    $post_id Submission ID (0 for the test e-mail).
-	 * @return array [ 'ok' => bool, 'via' => string, 'error' => string ]
+	 * @param array  $skip    Addresses that already received this report (a retry sends only to the others).
+	 * @return array [ 'ok' => bool, 'via' => string, 'error' => string, 'sent' => addresses that got it now ]
 	 */
-	public static function send_report( array $summary, $docx, array $data, array $uploads, $post_id = 0 ) {
-		$to = Shoval_Intake_Settings::report_emails();
+	public static function send_report( array $summary, $docx, array $data, array $uploads, $post_id = 0, array $skip = array() ) {
+		$all = Shoval_Intake_Settings::report_emails();
+		if ( ! $all ) {
+			return array( 'ok' => false, 'via' => '', 'error' => 'לא הוגדר מייל תקין לקבלת הסיכומים.', 'sent' => array() );
+		}
+		$skip = array_map( 'strtolower', $skip );
+		$to   = array_values( array_filter( $all, function ( $address ) use ( $skip ) {
+			return ! in_array( strtolower( $address ), $skip, true );
+		} ) );
 		if ( ! $to ) {
-			return array( 'ok' => false, 'via' => '', 'error' => 'לא הוגדר מייל תקין לקבלת הסיכומים.' );
+			return array( 'ok' => true, 'via' => '', 'error' => '', 'sent' => array() );
 		}
 
 		$name      = ! empty( $summary['patient']['fullName'] ) ? $summary['patient']['fullName'] : 'מטופל';
@@ -76,21 +84,42 @@ class Shoval_Intake_Email {
 			. 'תאריך: ' . ( isset( $summary['date'] ) ? $summary['date'] : '' ) . "\n\n"
 			. "מצורפת טיוטת סיכום ההערכה הקלינית שנוצרה מהשאלון בפורמט Word (.docx). יש לעבור עליה, להשלים ולאשר לפני שימוש.";
 
-		$error = '';
-		if ( Shoval_Intake_Settings::get( 'resend_api_key' ) ) {
-			$result = self::send_resend( $to, $subject, $html, $text, $attachments );
-			if ( $result === true ) {
-				return array( 'ok' => true, 'via' => 'resend', 'error' => '' );
+		// One e-mail per address, so an address that one service refuses (or that fails) never stops the others.
+		// Each address goes through Brevo, then the site's own mail server: the first that accepts it.
+		$senders = array();
+		if ( Shoval_Intake_Settings::get( 'brevo_api_key' ) && Shoval_Intake_Settings::get( 'brevo_from' ) ) {
+			$senders['brevo'] = function ( $address ) use ( $subject, $html, $text, $attachments ) {
+				return self::send_brevo( $address, $subject, $html, $text, $attachments );
+			};
+		}
+		$senders['wp_mail'] = function ( $address ) use ( $subject, $html, $attachments ) {
+			return self::send_wp_mail( $address, $subject, $html, $attachments );
+		};
+
+		$sent   = array();
+		$via    = array();
+		$errors = array();
+		foreach ( $to as $address ) {
+			$failures = array();
+			foreach ( $senders as $service => $send ) {
+				$result = $send( $address );
+				if ( $result === true ) {
+					$sent[]          = $address;
+					$via[ $service ] = true;
+					continue 2;
+				}
+				$failures[] = $service . ': ' . $result;
+				error_log( 'Shoval Intake: ' . $service . ' delivery failed: ' . $result );
 			}
-			$error = 'Resend: ' . $result . '. ';
-			error_log( 'Shoval Intake: Resend delivery failed, falling back to wp_mail: ' . $result );
+			$errors[] = $address . ' – ' . implode( '. ', $failures );
 		}
 
-		$result = self::send_wp_mail( $to, $subject, $html, $attachments );
-		if ( $result === true ) {
-			return array( 'ok' => true, 'via' => 'wp_mail', 'error' => '' );
-		}
-		return array( 'ok' => false, 'via' => '', 'error' => $error . 'wp_mail: ' . $result );
+		return array(
+			'ok'    => ! $errors,
+			'via'   => implode( ', ', array_keys( $via ) ),
+			'error' => implode( ' | ', $errors ),
+			'sent'  => $sent,
+		);
 	}
 
 	/** "סיכום_קליני_<name>_<date>.docx" – dated by the day the draft was made (the letter itself leaves the day blank). */
@@ -101,27 +130,44 @@ class Shoval_Intake_Email {
 	}
 
 	/**
-	 * @param string[] $to
+	 * Brevo transactional API (free plan: 300 e-mails a day). The sender must be confirmed in Brevo.
+	 * Attachment names are sent in plain Latin letters: Brevo garbles Hebrew file names.
+	 *
 	 * @return true|string
 	 */
-	private static function send_resend( array $to, $subject, $html, $text, array $attachments ) {
+	private static function send_brevo( $to, $subject, $html, $text, array $attachments ) {
+		list( $name, $email ) = self::parse_sender( (string) Shoval_Intake_Settings::get( 'brevo_from' ) );
+
+		$files = array();
+		foreach ( array_values( $attachments ) as $i => $a ) {
+			$file = $a['name'];
+			if ( ! preg_match( '/^[\x20-\x7E]+$/', $file ) ) {
+				$ext  = strtolower( pathinfo( $file, PATHINFO_EXTENSION ) );
+				$file = $i === 0 && preg_match( '/(\d+-\d+-\d+)\.docx$/', $file, $m )
+					? 'clinical-summary-' . $m[1] . '.docx'   // the Word draft is always the first attachment
+					: 'attachment-' . ( $i + 1 ) . '.' . $ext;
+			}
+			$files[] = array( 'name' => $file, 'content' => base64_encode( $a['content'] ) );
+		}
+
 		$payload = array(
-			'from'        => (string) Shoval_Intake_Settings::get( 'resend_from' ) ?: 'onboarding@resend.dev',
-			'to'          => $to,
+			'sender'      => $name !== '' ? array( 'name' => $name, 'email' => $email ) : array( 'email' => $email ),
+			'to'          => array( array( 'email' => $to ) ),
 			'subject'     => $subject,
-			'html'        => $html,
-			'text'        => $text,
-			'attachments' => array_map( function ( $a ) {
-				return array( 'filename' => $a['name'], 'content' => base64_encode( $a['content'] ) );
-			}, $attachments ),
+			'htmlContent' => $html,
+			'textContent' => $text,
 		);
+		if ( $files ) {
+			$payload['attachment'] = $files;
+		}
 		$response = wp_remote_post(
-			'https://api.resend.com/emails',
+			'https://api.brevo.com/v3/smtp/email',
 			array(
 				'timeout' => 45,
 				'headers' => array(
-					'Content-Type'  => 'application/json',
-					'Authorization' => 'Bearer ' . trim( (string) Shoval_Intake_Settings::get( 'resend_api_key' ) ),
+					'Content-Type' => 'application/json',
+					'Accept'       => 'application/json',
+					'api-key'      => trim( (string) Shoval_Intake_Settings::get( 'brevo_api_key' ) ),
 				),
 				'body'    => wp_json_encode( $payload ),
 			)
@@ -137,11 +183,16 @@ class Shoval_Intake_Email {
 		return isset( $json['message'] ) ? (string) $json['message'] : 'HTTP ' . $code;
 	}
 
-	/**
-	 * @param string[] $to
-	 * @return true|string
-	 */
-	private static function send_wp_mail( array $to, $subject, $html, array $attachments ) {
+	/** "Name <address>" or "address" → [ name, address ]. */
+	private static function parse_sender( $value ) {
+		if ( preg_match( '/^(.*)<([^>]+)>$/u', trim( $value ), $m ) ) {
+			return array( trim( $m[1] ), trim( $m[2] ) );
+		}
+		return array( '', trim( $value ) );
+	}
+
+	/** @return true|string */
+	private static function send_wp_mail( $to, $subject, $html, array $attachments ) {
 		// wp_mail() names attachments after their file, so write named copies to a private temp folder.
 		$tmp = Shoval_Intake_Storage::base_dir() . '/tmp-' . Shoval_Intake_Storage::random_name();
 		if ( ! Shoval_Intake_Storage::ensure_private_dir() || ! wp_mkdir_p( $tmp ) ) {

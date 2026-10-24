@@ -59,14 +59,15 @@ class Shoval_Intake_Processor {
 
 	/**
 	 * @param int  $post_id
-	 * @param bool $force   Regenerate the summary even if one exists (admin "reprocess").
+	 * @param bool $force      Regenerate the summary even if one exists (admin "הפקה מחדש ושליחה").
+	 * @param bool $send_again Send to every report address again, even after it was sent (admin buttons).
 	 */
-	public static function process( $post_id, $force = false ) {
+	public static function process( $post_id, $force = false, $send_again = false ) {
 		$post_id = (int) $post_id;
 		if ( get_post_type( $post_id ) !== Shoval_Intake_Storage::POST_TYPE ) {
 			return;
 		}
-		if ( ! $force && Shoval_Intake_Storage::status( $post_id ) === 'done' ) {
+		if ( ! $force && ! $send_again && Shoval_Intake_Storage::status( $post_id ) === 'done' ) {
 			return;
 		}
 		$lock = 'shoval_intake_lock_' . $post_id;
@@ -113,7 +114,11 @@ class Shoval_Intake_Processor {
 				update_post_meta( $post_id, '_si_summary', wp_slash( wp_json_encode( $summary, JSON_UNESCAPED_UNICODE ) ) );
 			}
 
-			$result = Shoval_Intake_Email::send_report( $summary, $docx, $data, self::uploads( $post_id ), $post_id );
+			// An automatic retry sends only to the addresses that did not get the report yet.
+			$sent   = $force || $send_again ? array() : get_post_meta( $post_id, '_si_sent_to', true );
+			$sent   = is_array( $sent ) ? $sent : array();
+			$result =Shoval_Intake_Email::send_report( $summary, $docx, $data, self::uploads( $post_id ), $post_id, $sent );
+			update_post_meta( $post_id, '_si_sent_to', array_merge( $sent, $result['sent'] ) );
 			if ( ! $result['ok'] ) {
 				throw new RuntimeException( 'e-mail: ' . $result['error'] );
 			}

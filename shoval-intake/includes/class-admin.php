@@ -223,7 +223,7 @@ class Shoval_Intake_Admin {
 		check_admin_referer( 'shoval_intake_reprocess_' . $post_id );
 
 		delete_transient( 'shoval_intake_lock_' . $post_id );
-		Shoval_Intake_Processor::process( $post_id, ! empty( $_GET['regenerate'] ) );
+		Shoval_Intake_Processor::process( $post_id, ! empty( $_GET['regenerate'] ), true );
 
 		$ok = Shoval_Intake_Storage::status( $post_id ) === 'done';
 		wp_safe_redirect( add_query_arg( 'si_reprocessed', $ok ? 'ok' : 'fail', get_edit_post_link( $post_id, 'url' ) ) );

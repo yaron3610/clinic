@@ -231,10 +231,10 @@ class Shoval_Intake_Letter {
 			$text .= ' שני ההורים נכחו בפגישה במרפאה ומסרו מידע רפואי ואנאמנסטי מפורט כנדרש.';
 		}
 
-		// The referral reason is free text, so it gets its own sentence instead of being glued after "בשל".
+		// "…לצורך איבחון אינטגרטיבי, בשל <the referral reason as the parents wrote it>."
 		$reason = rtrim( self::one_line( self::field( $data, 'referralReason' ) ), " .\t" );
-		$text  .= "\n\n" . ( $f ? 'הוערכה' : 'הוערך' ) . ' במרפאתי לראשונה היום לצורך איבחון אינטגרטיבי.'
-			. ( $reason !== '' ? ' סיבת הפנייה: ' . $reason . '.' : '' );
+		$text  .= "\n\n" . ( $f ? 'הוערכה' : 'הוערך' ) . ' במרפאתי לראשונה היום לצורך איבחון אינטגרטיבי'
+			. ( $reason !== '' ? ', בשל ' . $reason : '' ) . '.';
 
 		return $text;
 	}

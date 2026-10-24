@@ -9,17 +9,18 @@ Elementor site, without changing the site's design:
   (the clinic's letterhead format) and an RTL e-mail to the clinic with the draft and the uploaded files.
 
 Installation steps (Hebrew): **[IMPORT-BACK-GUIDE.md](IMPORT-BACK-GUIDE.md)**.
-The installable plugin is attached to the latest [release](../../releases) as `shoval-intake.zip`.
+Since 1.1.0 the installable `shoval-intake.zip` is built locally and not attached to [releases](../../releases)
+(it contains the clinic stamp, which is kept out of this public repository).
 
 ## Configuration
 
 **WP Admin → שאלוני קבלה → הגדרות**: report e-mails (one or more, separated by commas), the Dx. and Rx.
-lists of the letter, Resend key and sender. These can instead be defined in `wp-config.php` (they then take
+lists of the letter, and the Brevo key and sender. These can instead be defined in `wp-config.php` (they then take
 precedence and are not stored in the database):
 
 ```php
-define( 'SHOVAL_INTAKE_RESEND_API_KEY', '...' );
-define( 'SHOVAL_INTAKE_RESEND_FROM', 'Clinic <no-reply@example.com>' );
+define( 'SHOVAL_INTAKE_BREVO_API_KEY', '...' );
+define( 'SHOVAL_INTAKE_BREVO_FROM', 'Clinic <clinic@example.com>' );
 define( 'SHOVAL_INTAKE_REPORT_EMAIL', 'reports@example.com, doctor@example.com' );
 ```
 
@@ -38,7 +39,7 @@ No keys are stored in this repository. Never commit them.
   closed to the web by `.htaccess`. The stamp image (`stamp.png`) is not in this public repository – it is
   part of the plugin zip only.
 - Spam protection: signed form token, honeypot, 5 submissions per hour per IP. Consent is required.
-- E-mail goes through Resend, falling back to the site's `wp_mail()`.
+- E-mail: one message per report address, through Brevo (transactional API), falling back to the site's `wp_mail()`.
 
 ## Structure
 

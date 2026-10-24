@@ -1,10 +1,10 @@
 <?php
 /**
- * Plugin settings (report e-mails, Dx./Rx. lists, Resend key, retention) and the settings screen.
+ * Plugin settings (report e-mails, Dx./Rx. lists, Brevo key, retention) and the settings screen.
  *
  * These can also be defined as constants in wp-config.php, which take
  * precedence over the value saved in the database:
- *   SHOVAL_INTAKE_RESEND_API_KEY, SHOVAL_INTAKE_RESEND_FROM,
+ *   SHOVAL_INTAKE_BREVO_API_KEY, SHOVAL_INTAKE_BREVO_FROM,
  *   SHOVAL_INTAKE_REPORT_EMAIL (one address, or several separated by commas)
  */
 
@@ -16,17 +16,17 @@ class Shoval_Intake_Settings {
 	const PAGE   = 'shoval-intake-settings';
 
 	private static $constants = array(
-		'resend_api_key' => 'SHOVAL_INTAKE_RESEND_API_KEY',
-		'resend_from'    => 'SHOVAL_INTAKE_RESEND_FROM',
-		'report_email'   => 'SHOVAL_INTAKE_REPORT_EMAIL',
+		'brevo_api_key' => 'SHOVAL_INTAKE_BREVO_API_KEY',
+		'brevo_from'    => 'SHOVAL_INTAKE_BREVO_FROM',
+		'report_email'  => 'SHOVAL_INTAKE_REPORT_EMAIL',
 	);
 
-	private static $secrets = array( 'resend_api_key' );
+	private static $secrets = array( 'brevo_api_key' );
 
 	public static function defaults() {
 		return array(
-			'resend_api_key' => '',
-			'resend_from'    => 'onboarding@resend.dev',
+			'brevo_api_key'  => '',
+			'brevo_from'     => '',
 			'report_email'   => get_option( 'admin_email' ),
 			'attach_uploads' => 1,
 			'retention_days' => 90,
@@ -180,18 +180,21 @@ class Shoval_Intake_Settings {
 			}
 		}
 
-		if ( isset( $input['resend_from'] ) ) {
-			$raw = trim( wp_unslash( (string) $input['resend_from'] ) );
+		foreach ( array( 'brevo_from' ) as $key ) {
+			if ( ! isset( $input[ $key ] ) ) {
+				continue;
+			}
+			$raw = trim( wp_unslash( (string) $input[ $key ] ) );
 			// The sender may be written as "Clinic name <address@domain>".
 			if ( preg_match( '/^(.*)<([^>]+)>$/u', $raw, $m ) && is_email( trim( $m[2] ) ) ) {
-				$label              = trim( sanitize_text_field( str_replace( array( '"', '<', '>' ), '', $m[1] ) ) );
-				$out['resend_from'] = ( $label !== '' ? $label . ' ' : '' ) . '<' . sanitize_email( trim( $m[2] ) ) . '>';
+				$label       = trim( sanitize_text_field( str_replace( array( '"', '<', '>' ), '', $m[1] ) ) );
+				$out[ $key ] = ( $label !== '' ? $label . ' ' : '' ) . '<' . sanitize_email( trim( $m[2] ) ) . '>';
 			} else {
 				$email = sanitize_email( $raw );
 				if ( $email || $raw === '' ) {
-					$out['resend_from'] = $email;
+					$out[ $key ] = $email;
 				} else {
-					add_settings_error( self::OPTION, 'resend_from', 'כתובת המייל "' . esc_html( $raw ) . '" אינה תקינה ולא נשמרה.' );
+					add_settings_error( self::OPTION, $key, 'כתובת המייל "' . esc_html( $raw ) . '" אינה תקינה ולא נשמרה.' );
 				}
 			}
 		}
@@ -234,14 +237,14 @@ class Shoval_Intake_Settings {
 							<p class="description">כל השורות נכתבות בכל מכתב, בסדר הזה (כולל 0). שורה לכל תרופה.</p></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="si-resend-key">Resend API key</label></th>
-						<td><?php self::secret_field( 'resend_api_key', $s ); ?>
-							<p class="description">אם לא מוגדר, או אם השליחה דרך Resend נכשלת, המייל נשלח דרך שרת המייל של האתר (wp_mail).</p></td>
+						<th scope="row"><label for="si-brevo-key">Brevo API key</label></th>
+						<td><?php self::secret_field( 'brevo_api_key', $s ); ?>
+							<p class="description">המיילים נשלחים דרך Brevo (מפתח עם הרשאת Transactional email, מתחיל ב-xkeysib-). אם לא מוגדר, או אם Brevo נכשל, המייל נשלח דרך שרת המייל של האתר (wp_mail).</p></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="si-resend-from">כתובת השולח ב-Resend</label></th>
-						<td><?php self::text_field( 'resend_from', $s ); ?>
-							<p class="description">הכתובת onboarding@resend.dev שולחת רק למייל של בעל חשבון ה-Resend. לשליחה לכל כתובת יש לאמת דומיין ב-Resend.</p></td>
+						<th scope="row"><label for="si-brevo-from">כתובת השולח ב-Brevo</label></th>
+						<td><?php self::text_field( 'brevo_from', $s ); ?>
+							<p class="description">כתובת שאושרה ב-Brevo (Senders, אישור בקוד שנשלח אליה), למשל: מרפאת פרופ גל שובל &lt;shovalclinic@gmail.com&gt;</p></td>
 					</tr>
 					<tr>
 						<th scope="row">צירוף קבצים</th>
@@ -299,7 +302,7 @@ class Shoval_Intake_Settings {
 			esc_attr( self::OPTION ),
 			esc_attr( $key ),
 			esc_attr( $s[ $key ] ),
-			$key === 'resend_from' ? 'auto' : 'ltr'
+			$key === 'brevo_from' ? 'auto' : 'ltr'
 		);
 	}
 

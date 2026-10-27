@@ -75,7 +75,7 @@ class Shoval_Intake_Email {
 			}
 		}
 
-		$subject = self::RLM . 'סיכום קליני חדש – ' . $name;
+		$subject = self::RLM . $name . ' – סיכום קליני חדש';   // the patient's full name first, so it shows in the inbox list
 		$html    = self::build_html( $summary, $docx_name, $data, $uploads, $uploads_note, $post_id );
 		$text    = "התקבל שאלון קבלה חדש למטופל.\n\n"
 			. 'שם המטופל: ' . $name . "\n"
@@ -131,7 +131,7 @@ class Shoval_Intake_Email {
 
 	/**
 	 * Brevo transactional API (free plan: 300 e-mails a day). The sender must be confirmed in Brevo.
-	 * Attachment names are sent in plain Latin letters: Brevo garbles Hebrew file names.
+	 * Attachments keep their Hebrew names (the Word draft: "סיכום_קליני_<patient>_<date>.docx").
 	 *
 	 * @return true|string
 	 */
@@ -139,15 +139,8 @@ class Shoval_Intake_Email {
 		list( $name, $email ) = self::parse_sender( (string) Shoval_Intake_Settings::get( 'brevo_from' ) );
 
 		$files = array();
-		foreach ( array_values( $attachments ) as $i => $a ) {
-			$file = $a['name'];
-			if ( ! preg_match( '/^[\x20-\x7E]+$/', $file ) ) {
-				$ext  = strtolower( pathinfo( $file, PATHINFO_EXTENSION ) );
-				$file = $i === 0 && preg_match( '/(\d+-\d+-\d+)\.docx$/', $file, $m )
-					? 'clinical-summary-' . $m[1] . '.docx'   // the Word draft is always the first attachment
-					: 'attachment-' . ( $i + 1 ) . '.' . $ext;
-			}
-			$files[] = array( 'name' => $file, 'content' => base64_encode( $a['content'] ) );
+		foreach ( $attachments as $a ) {
+			$files[] = array( 'name' => self::brevo_file_name( $a['name'] ), 'content' => base64_encode( $a['content'] ) );
 		}
 
 		$payload = array(
@@ -181,6 +174,20 @@ class Shoval_Intake_Email {
 		}
 		$json = json_decode( wp_remote_retrieve_body( $response ), true );
 		return isset( $json['message'] ) ? (string) $json['message'] : 'HTTP ' . $code;
+	}
+
+	/**
+	 * Brevo splits a Hebrew file name into short pieces that Gmail shows with spaces in between
+	 * ("סיכום_קלי ני_…"). Handed over already encoded – one RFC 2047 word, then the plain extension
+	 * that Brevo checks – the name arrives whole: "=?UTF-8?B?…?=.docx".
+	 */
+	private static function brevo_file_name( $name ) {
+		if ( preg_match( '/^[\x20-\x7E]+$/', $name ) ) {
+			return $name;
+		}
+		$ext  = (string) pathinfo( $name, PATHINFO_EXTENSION );
+		$stem = $ext !== '' ? substr( $name, 0, -strlen( $ext ) - 1 ) : $name;
+		return '=?UTF-8?B?' . base64_encode( $stem ) . '?=' . ( $ext !== '' ? '.' . $ext : '' );
 	}
 
 	/** "Name <address>" or "address" → [ name, address ]. */

@@ -1,13 +1,14 @@
 <?php
 /**
  * Clinic e-mail: the RTL report e-mail (port of REPORT_AI/email_sender.ts and
- * rtl_email_engine.ts) and delivery through Brevo, falling back to wp_mail().
+ * rtl_email_engine.ts) and delivery through Gmail, then Brevo, falling back to wp_mail().
  */
 
 defined( 'ABSPATH' ) || exit;
 
 class Shoval_Intake_Email {
 
+	const FROM_NAME      = 'מרפאת פרופ׳ גל שובל';
 	const RLM            = "\u{200F}";
 	const MAX_ATTACH_SIZE = 20971520; // 20 MB for uploads attached to one e-mail.
 
@@ -85,8 +86,13 @@ class Shoval_Intake_Email {
 			. "מצורפת טיוטת סיכום ההערכה הקלינית שנוצרה מהשאלון בפורמט Word (.docx). יש לעבור עליה, להשלים ולאשר לפני שימוש.";
 
 		// One e-mail per address, so an address that one service refuses (or that fails) never stops the others.
-		// Each address goes through Brevo, then the site's own mail server: the first that accepts it.
+		// Each address goes through Gmail, then Brevo, then the site's own mail server: the first that accepts it.
 		$senders = array();
+		if ( Shoval_Intake_Settings::get( 'gmail_user' ) && Shoval_Intake_Settings::get( 'gmail_app_password' ) ) {
+			$senders['gmail'] = function ( $address ) use ( $subject, $html, $text, $attachments ) {
+				return self::send_gmail( $address, $subject, $html, $text, $attachments );
+			};
+		}
 		if ( Shoval_Intake_Settings::get( 'brevo_api_key' ) && Shoval_Intake_Settings::get( 'brevo_from' ) ) {
 			$senders['brevo'] = function ( $address ) use ( $subject, $html, $text, $attachments ) {
 				return self::send_brevo( $address, $subject, $html, $text, $attachments );
@@ -130,6 +136,47 @@ class Shoval_Intake_Email {
 	}
 
 	/**
+	 * Gmail SMTP with an app password (Google account → Security → App passwords). The e-mail is sent
+	 * by Google's own servers from the Gmail address itself, which strict receivers (such as the
+	 * university's Microsoft 365) trust far more than a mailing service's rewritten sender.
+	 *
+	 * @return true|string
+	 */
+	private static function send_gmail( $to, $subject, $html, $text, array $attachments ) {
+		require_once ABSPATH . WPINC . '/PHPMailer/PHPMailer.php';
+		require_once ABSPATH . WPINC . '/PHPMailer/SMTP.php';
+		require_once ABSPATH . WPINC . '/PHPMailer/Exception.php';
+
+		$user = trim( (string) Shoval_Intake_Settings::get( 'gmail_user' ) );
+		$mail = new PHPMailer\PHPMailer\PHPMailer( true );
+		try {
+			$mail->isSMTP();
+			$mail->Host       = 'smtp.gmail.com';
+			$mail->Port       = 587;
+			$mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+			$mail->SMTPAuth   = true;
+			$mail->Username   = $user;
+			$mail->Password   = preg_replace( '/\s+/', '', (string) Shoval_Intake_Settings::get( 'gmail_app_password' ) ); // Google shows it as "abcd efgh ijkl mnop".
+			$mail->Timeout    = 30;
+			$mail->CharSet    = 'UTF-8';
+			$mail->Encoding   = 'base64';
+			$mail->setFrom( $user, self::FROM_NAME );
+			$mail->addAddress( $to );
+			$mail->Subject = $subject;
+			$mail->isHTML( true );
+			$mail->Body    = $html;
+			$mail->AltBody = $text;
+			foreach ( $attachments as $a ) {
+				$mail->addStringAttachment( $a['content'], self::whole_file_name( $a['name'] ), 'base64', $a['type'] );
+			}
+			$mail->send();
+			return true;
+		} catch ( Exception $e ) {
+			return $mail->ErrorInfo !== '' ? $mail->ErrorInfo : $e->getMessage();
+		}
+	}
+
+	/**
 	 * Brevo transactional API (free plan: 300 e-mails a day). The sender must be confirmed in Brevo.
 	 * Attachments keep their Hebrew names (the Word draft: "סיכום_קליני_<patient>_<date>.docx").
 	 *
@@ -140,7 +187,7 @@ class Shoval_Intake_Email {
 
 		$files = array();
 		foreach ( $attachments as $a ) {
-			$files[] = array( 'name' => self::brevo_file_name( $a['name'] ), 'content' => base64_encode( $a['content'] ) );
+			$files[] = array( 'name' => self::whole_file_name( $a['name'] ), 'content' => base64_encode( $a['content'] ) );
 		}
 
 		$payload = array(
@@ -177,11 +224,11 @@ class Shoval_Intake_Email {
 	}
 
 	/**
-	 * Brevo splits a Hebrew file name into short pieces that Gmail shows with spaces in between
-	 * ("סיכום_קלי ני_…"). Handed over already encoded – one RFC 2047 word, then the plain extension
-	 * that Brevo checks – the name arrives whole: "=?UTF-8?B?…?=.docx".
+	 * Brevo (and PHPMailer) split a long Hebrew file name into short pieces that Gmail shows with spaces
+	 * in between ("סיכום_קלי ני_…"). Handed over already encoded – one RFC 2047 word, then the plain
+	 * extension that Brevo checks – the name arrives whole: "=?UTF-8?B?…?=.docx".
 	 */
-	private static function brevo_file_name( $name ) {
+	private static function whole_file_name( $name ) {
 		if ( preg_match( '/^[\x20-\x7E]+$/', $name ) ) {
 			return $name;
 		}

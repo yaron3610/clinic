@@ -1,9 +1,10 @@
 <?php
 /**
- * Plugin settings (report e-mails, Dx./Rx. lists, Brevo key, retention) and the settings screen.
+ * Plugin settings (report e-mails, Dx./Rx. lists, Gmail and Brevo sending, retention) and the settings screen.
  *
  * These can also be defined as constants in wp-config.php, which take
  * precedence over the value saved in the database:
+ *   SHOVAL_INTAKE_GMAIL_USER, SHOVAL_INTAKE_GMAIL_APP_PASSWORD,
  *   SHOVAL_INTAKE_BREVO_API_KEY, SHOVAL_INTAKE_BREVO_FROM,
  *   SHOVAL_INTAKE_REPORT_EMAIL (one address, or several separated by commas)
  */
@@ -16,20 +17,24 @@ class Shoval_Intake_Settings {
 	const PAGE   = 'shoval-intake-settings';
 
 	private static $constants = array(
-		'brevo_api_key' => 'SHOVAL_INTAKE_BREVO_API_KEY',
-		'brevo_from'    => 'SHOVAL_INTAKE_BREVO_FROM',
-		'report_email'  => 'SHOVAL_INTAKE_REPORT_EMAIL',
+		'gmail_user'         => 'SHOVAL_INTAKE_GMAIL_USER',
+		'gmail_app_password' => 'SHOVAL_INTAKE_GMAIL_APP_PASSWORD',
+		'brevo_api_key'      => 'SHOVAL_INTAKE_BREVO_API_KEY',
+		'brevo_from'         => 'SHOVAL_INTAKE_BREVO_FROM',
+		'report_email'       => 'SHOVAL_INTAKE_REPORT_EMAIL',
 	);
 
-	private static $secrets = array( 'brevo_api_key' );
+	private static $secrets = array( 'gmail_app_password', 'brevo_api_key' );
 
 	public static function defaults() {
 		return array(
-			'brevo_api_key'  => '',
-			'brevo_from'     => '',
-			'report_email'   => get_option( 'admin_email' ),
-			'attach_uploads' => 1,
-			'retention_days' => 90,
+			'gmail_user'         => '',
+			'gmail_app_password' => '',
+			'brevo_api_key'      => '',
+			'brevo_from'         => '',
+			'report_email'       => get_option( 'admin_email' ),
+			'attach_uploads'     => 1,
+			'retention_days'     => 90,
 			// The clinic's lists ("אבחנות" and "תרופות"): every line is written in every letter.
 			'dx_list'        => implode(
 				"\n",
@@ -180,6 +185,16 @@ class Shoval_Intake_Settings {
 			}
 		}
 
+		if ( isset( $input['gmail_user'] ) ) {
+			$raw   = trim( wp_unslash( (string) $input['gmail_user'] ) );
+			$email = sanitize_email( $raw );
+			if ( $email || $raw === '' ) {
+				$out['gmail_user'] = $email;
+			} else {
+				add_settings_error( self::OPTION, 'gmail_user', 'כתובת המייל "' . esc_html( $raw ) . '" אינה תקינה ולא נשמרה.' );
+			}
+		}
+
 		foreach ( array( 'brevo_from' ) as $key ) {
 			if ( ! isset( $input[ $key ] ) ) {
 				continue;
@@ -237,9 +252,19 @@ class Shoval_Intake_Settings {
 							<p class="description">כל השורות נכתבות בכל מכתב, בסדר הזה (כולל 0). שורה לכל תרופה.</p></td>
 					</tr>
 					<tr>
+						<th scope="row"><label for="si-gmail-user">שליחה דרך Gmail – כתובת</label></th>
+						<td><?php self::text_field( 'gmail_user', $s ); ?>
+							<p class="description">המיילים נשלחים מהכתובת הזו, דרך השרתים של Google (עד כ-500 מיילים ביום), בלי הגדרות DNS. אם Gmail נכשל – דרך Brevo (אם הוגדר), ואחריו דרך שרת המייל של האתר.</p></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="si-gmail-app-password">Gmail – סיסמת אפליקציה</label></th>
+						<td><?php self::secret_field( 'gmail_app_password', $s ); ?>
+							<p class="description">לא הסיסמה הרגילה של Gmail: בחשבון Google ← אבטחה ← אימות דו-שלבי (חייב להיות פעיל) ← סיסמאות לאפליקציות. 16 אותיות.</p></td>
+					</tr>
+					<tr>
 						<th scope="row"><label for="si-brevo-key">Brevo API key</label></th>
 						<td><?php self::secret_field( 'brevo_api_key', $s ); ?>
-							<p class="description">המיילים נשלחים דרך Brevo (מפתח עם הרשאת Transactional email, מתחיל ב-xkeysib-). אם לא מוגדר, או אם Brevo נכשל, המייל נשלח דרך שרת המייל של האתר (wp_mail).</p></td>
+							<p class="description">גיבוי ל-Gmail (מפתח עם הרשאת Transactional email, מתחיל ב-xkeysib-). אם Gmail ו-Brevo לא מוגדרים או נכשלים, המייל נשלח דרך שרת המייל של האתר (wp_mail).</p></td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="si-brevo-from">כתובת השולח ב-Brevo</label></th>

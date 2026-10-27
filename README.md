@@ -15,10 +15,12 @@ Since 1.1.0 the installable `shoval-intake.zip` is built locally and not attache
 ## Configuration
 
 **WP Admin → שאלוני קבלה → הגדרות**: report e-mails (one or more, separated by commas), the Dx. and Rx.
-lists of the letter, and the Brevo key and sender. These can instead be defined in `wp-config.php` (they then take
+lists of the letter, the Gmail address and app password, and an optional Brevo key and sender (backup). These can instead be defined in `wp-config.php` (they then take
 precedence and are not stored in the database):
 
 ```php
+define( 'SHOVAL_INTAKE_GMAIL_USER', 'clinic@gmail.com' );
+define( 'SHOVAL_INTAKE_GMAIL_APP_PASSWORD', '...' );
 define( 'SHOVAL_INTAKE_BREVO_API_KEY', '...' );
 define( 'SHOVAL_INTAKE_BREVO_FROM', 'Clinic <clinic@example.com>' );
 define( 'SHOVAL_INTAKE_REPORT_EMAIL', 'reports@example.com, doctor@example.com' );
@@ -39,7 +41,7 @@ No keys are stored in this repository. Never commit them.
   closed to the web by `.htaccess`. The stamp image (`stamp.png`) is not in this public repository – it is
   part of the plugin zip only.
 - Spam protection: signed form token, honeypot, 5 submissions per hour per IP. Consent is required.
-- E-mail: one message per report address, through Brevo (transactional API), falling back to the site's `wp_mail()`.
+- E-mail: one message per report address, through Gmail SMTP (app password, sent by Google's own servers), then Brevo, then the site's `wp_mail()`.
 
 ## Structure
 

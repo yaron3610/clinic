@@ -128,11 +128,14 @@ class Shoval_Intake_Email {
 		);
 	}
 
-	/** "סיכום_קליני_<name>_<date>.docx" – dated by the day the draft was made (the letter itself leaves the day blank). */
+	/**
+	 * The clinic's name for the Word draft: "<name>- רופא מטפל מלא <letter date>.docx" ("יוסי כהן- רופא מטפל מלא __-10-26.docx").
+	 * The letter's own date, day left blank – the physician may finish the letter a few days later.
+	 */
 	public static function docx_filename( array $summary ) {
 		$name = ! empty( $summary['patient']['fullName'] ) ? $summary['patient']['fullName'] : 'מטופל';
-		$date = ! empty( $summary['issued'] ) ? $summary['issued'] : ( isset( $summary['date'] ) ? $summary['date'] : '' );
-		return self::safe_filename( 'סיכום_קליני_' . preg_replace( '/\s+/u', '_', $name ) . '_' . str_replace( '/', '-', $date ) ) . '.docx';
+		$date = ! empty( $summary['date'] ) ? $summary['date'] : Shoval_Intake_Letter::letter_date();
+		return self::safe_filename( preg_replace( '/\s+/u', ' ', trim( $name ) ) . '- רופא מטפל מלא ' . str_replace( '/', '-', $date ) ) . '.docx';
 	}
 
 	/**
@@ -178,7 +181,7 @@ class Shoval_Intake_Email {
 
 	/**
 	 * Brevo transactional API (free plan: 300 e-mails a day). The sender must be confirmed in Brevo.
-	 * Attachments keep their Hebrew names (the Word draft: "סיכום_קליני_<patient>_<date>.docx").
+	 * Attachments keep their Hebrew names (the Word draft: "<patient>- רופא מטפל מלא <date>.docx").
 	 *
 	 * @return true|string
 	 */
@@ -290,6 +293,14 @@ class Shoval_Intake_Email {
 		return esc_html( (string) $text );
 	}
 
+	/**
+	 * A Hebrew file name, read right to left. Without the LRM before the date the extension jumps to the
+	 * other end ("docx.__-10-26"); with it the name ends "__-10-26.docx" as it should.
+	 */
+	private static function file_name_html( $name ) {
+		return '<span dir="rtl" style="direction: rtl; unicode-bidi: embed;">' . self::e( preg_replace( '/([\d_][\d_-]*\.\w+)$/u', "\u{200E}$1", $name ) ) . '</span>';
+	}
+
 	private static function ltr( $text ) {
 		if ( (string) $text === '' ) {
 			return '';
@@ -356,7 +367,7 @@ class Shoval_Intake_Email {
 		$h  = '';
 		// Top notice bar.
 		$h .= '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" dir="rtl" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 24px; direction: rtl; text-align: right;"><tr dir="rtl"><td dir="rtl" style="padding: 10px 16px; font-size: 13.5px; color: #475569; direction: rtl; text-align: right;">'
-			. '📄 מצורף קובץ Word רשמי: <strong style="color: #002060;">' . self::ltr( $filename ) . '</strong><br>'
+			. '📄 מצורף קובץ Word רשמי: <strong style="color: #002060;">' . self::file_name_html( $filename ) . '</strong><br>'
 			. '<span style="color: #b45309;">טיוטה שהופקה אוטומטית משאלון הקבלה – יש לעבור עליה, להשלים ולאשר לפני שימוש.</span>'
 			. ( $admin_link ? '<br><a href="' . esc_url( $admin_link ) . '" style="color: #00909e;">לצפייה בשאלון המלא ובקבצים באתר</a>' : '' )
 			. '</td></tr></table>';

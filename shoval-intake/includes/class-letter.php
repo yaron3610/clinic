@@ -49,7 +49,6 @@ class Shoval_Intake_Letter {
 				'gender'   => self::field( $data, 'gender' ),
 			),
 			'date'                           => self::letter_date(),
-			'issued'                         => self::israel_date(),
 			'letterAddressedTo'              => "לכב׳\nהרופא המטפל\nוכל גורם טיפולי / יעוצי / חינוכי רלבנטי, כולל ועדת אפיון וזכאות",
 			'subject'                        => 'הנדון: ' . $full_name . ' ת.ז. ' . $id_number . ' – סיכום הערכה קלינית ותוכנית טיפולית',
 			'diagnoses'                      => Shoval_Intake_Settings::diagnoses(),
@@ -68,14 +67,9 @@ class Shoval_Intake_Letter {
 		);
 	}
 
-	/** The letter date: month and year, with the day left blank for the physician ("__/10/26"). */
+	/** The letter date: month and year, with the day left blank for the physician ("__/10/26"); also used in the file name. */
 	public static function letter_date( $timestamp = null ) {
 		return '__/' . wp_date( 'm/y', $timestamp ? $timestamp : time(), new DateTimeZone( 'Asia/Jerusalem' ) );
-	}
-
-	/** Today's full date ("23/10/26"), used in file names. */
-	public static function israel_date( $timestamp = null ) {
-		return wp_date( 'd/m/y', $timestamp ? $timestamp : time(), new DateTimeZone( 'Asia/Jerusalem' ) );
 	}
 
 	/** "{male|female}" → the form that matches the patient's gender. */

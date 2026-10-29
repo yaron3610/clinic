@@ -648,6 +648,17 @@ body.shoval-intake-page {
 	.shoval-intake-page .si-brand-sub {
 		display: none;
 	}
+
+	/* iPhones zoom the page in when a field with text under 16px is tapped. */
+	.si-app input[type="text"],
+	.si-app input[type="tel"],
+	.si-app input[type="email"],
+	.si-app input[type="number"],
+	.si-app select,
+	.si-app textarea,
+	.si-app table.si-past-meds input {
+		font-size: 16px;
+	}
 }
 
 @media (max-width: 480px) {

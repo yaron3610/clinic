@@ -267,8 +267,14 @@ class Shoval_Intake_Email {
 		$catch   = function ( $wp_error ) use ( &$failure ) {
 			$failure = $wp_error->get_error_message();
 		};
+		// The site's own address (wordpress@<domain>), shown with the clinic's name instead of "WordPress".
+		$from_name = function () {
+			return self::FROM_NAME;
+		};
 		add_action( 'wp_mail_failed', $catch );
+		add_filter( 'wp_mail_from_name', $from_name );
 		$sent = wp_mail( $to, $subject, $html, array( 'Content-Type: text/html; charset=UTF-8' ), $paths );
+		remove_filter( 'wp_mail_from_name', $from_name );
 		remove_action( 'wp_mail_failed', $catch );
 
 		foreach ( $paths as $path ) {

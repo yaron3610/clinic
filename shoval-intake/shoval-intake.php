@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Shoval Intake – שאלון קבלה למטופל חדש
  * Description:       שאלון קבלה דיגיטלי למטופלים חדשים. כל שאלון נשמר באופן פרטי באתר, מופקת ממנו טיוטת סיכום קליני בפורמט Word, והיא נשלחת למייל המרפאה.
- * Version:           1.3.3
+ * Version:           1.3.4
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            מרפאת פרופ' גל שובל
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SHOVAL_INTAKE_VERSION', '1.3.3' );
+define( 'SHOVAL_INTAKE_VERSION', '1.3.4' );
 define( 'SHOVAL_INTAKE_FILE', __FILE__ );
 define( 'SHOVAL_INTAKE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SHOVAL_INTAKE_URL', plugin_dir_url( __FILE__ ) );
